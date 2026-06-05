@@ -1,0 +1,968 @@
+name: spark-lakehouse-poc
+x-s3-env:
+  AWS_ACCESS_KEY_ID: ${AWS_ACCESS_KEY_ID:-lakehouse-user}
+  AWS_SECRET_ACCESS_KEY: ${AWS_SECRET_ACCESS_KEY:-lakehouse-password}
+  AWS_REGION: ${AWS_REGION:-us-east-1}
+  AWS_DEFAULT_REGION: ${AWS_REGION:-us-east-1}
+  S3_ENDPOINT: ${S3_ENDPOINT:-http://host.docker.internal:9000}
+  S3_WAREHOUSE: ${S3_WAREHOUSE:-s3a://lakehouse/warehouse}
+  S3_PATH_STYLE_ACCESS: ${S3_PATH_STYLE_ACCESS:-true}
+  S3_SSL_ENABLED: ${S3_SSL_ENABLED:-false}
+x-postgres-env:
+  POSTGRES_HOST: ${POSTGRES_HOST:-host.docker.internal}
+  POSTGRES_PORT: ${POSTGRES_PORT:-5432}
+  POSTGRES_DB: ${POSTGRES_DB:-hive}
+  POSTGRES_USER: ${POSTGRES_USER:-hive}
+  POSTGRES_PASSWORD: ${POSTGRES_PASSWORD:-hive123}
+  POSTGRES_JDBC_PARAMS: ${POSTGRES_JDBC_PARAMS:-}
+x-spark-public-env:
+  SPARK_PUBLIC_HOST: ${SPARK_PUBLIC_HOST:?Set SPARK_PUBLIC_HOST to the host IP or DNS name reachable by Spark clients/workers}
+  SPARK_MASTER_BIND_HOST: ${SPARK_MASTER_BIND_HOST:-}
+  SPARK_WORKER_BIND_HOST: ${SPARK_WORKER_BIND_HOST:-}
+  SPARK_THRIFT_BIND_HOST: ${SPARK_THRIFT_BIND_HOST:-}
+  SPARK_DRIVER_BIND_ADDRESS: ${SPARK_DRIVER_BIND_ADDRESS:-}
+  HIVE_METASTORE_BIND_HOST: ${HIVE_METASTORE_BIND_HOST:-}
+  SPARK_MASTER_PORT: ${SPARK_MASTER_PORT:-7077}
+  SPARK_MASTER_WEBUI_PORT: ${SPARK_MASTER_WEBUI_PORT:-8080}
+  SPARK_WORKER_PUBLIC_HOST: ${SPARK_WORKER_PUBLIC_HOST:-}
+  SPARK_WORKER_PORT: ${SPARK_WORKER_PORT:-7078}
+  SPARK_WORKER_WEBUI_PORT: ${SPARK_WORKER_WEBUI_PORT:-8081}
+  SPARK_THRIFT_PUBLIC_HOST: ${SPARK_THRIFT_PUBLIC_HOST:-}
+  SPARK_THRIFT_PORT: ${SPARK_THRIFT_PORT:-10000}
+  SPARK_THRIFT_UI_PORT: ${SPARK_THRIFT_UI_PORT:-4040}
+  SPARK_THRIFT_DRIVER_PORT: ${SPARK_THRIFT_DRIVER_PORT:-39000}
+  SPARK_THRIFT_BLOCKMANAGER_PORT: ${SPARK_THRIFT_BLOCKMANAGER_PORT:-39001}
+  HIVE_METASTORE_PUBLIC_HOST: ${HIVE_METASTORE_PUBLIC_HOST:-}
+  HIVE_METASTORE_PORT: ${HIVE_METASTORE_PORT:-9083}
+  HIVE_METASTORE_URI: ${HIVE_METASTORE_URI:-}
+x-common-env:
+  AWS_ACCESS_KEY_ID: ${AWS_ACCESS_KEY_ID:-lakehouse-user}
+  AWS_SECRET_ACCESS_KEY: ${AWS_SECRET_ACCESS_KEY:-lakehouse-password}
+  AWS_REGION: ${AWS_REGION:-us-east-1}
+  AWS_DEFAULT_REGION: ${AWS_REGION:-us-east-1}
+  S3_ENDPOINT: ${S3_ENDPOINT:-http://host.docker.internal:9000}
+  S3_WAREHOUSE: ${S3_WAREHOUSE:-s3a://lakehouse/warehouse}
+  S3_PATH_STYLE_ACCESS: ${S3_PATH_STYLE_ACCESS:-true}
+  S3_SSL_ENABLED: ${S3_SSL_ENABLED:-false}
+  POSTGRES_HOST: ${POSTGRES_HOST:-host.docker.internal}
+  POSTGRES_PORT: ${POSTGRES_PORT:-5432}
+  POSTGRES_DB: ${POSTGRES_DB:-hive}
+  POSTGRES_USER: ${POSTGRES_USER:-hive}
+  POSTGRES_PASSWORD: ${POSTGRES_PASSWORD:-hive123}
+  POSTGRES_JDBC_PARAMS: ${POSTGRES_JDBC_PARAMS:-}
+  SPARK_PUBLIC_HOST: ${SPARK_PUBLIC_HOST:?Set SPARK_PUBLIC_HOST to the host IP or DNS name reachable by Spark clients/workers}
+  SPARK_MASTER_BIND_HOST: ${SPARK_MASTER_BIND_HOST:-}
+  SPARK_WORKER_BIND_HOST: ${SPARK_WORKER_BIND_HOST:-}
+  SPARK_THRIFT_BIND_HOST: ${SPARK_THRIFT_BIND_HOST:-}
+  SPARK_DRIVER_BIND_ADDRESS: ${SPARK_DRIVER_BIND_ADDRESS:-}
+  HIVE_METASTORE_BIND_HOST: ${HIVE_METASTORE_BIND_HOST:-}
+  SPARK_MASTER_PORT: ${SPARK_MASTER_PORT:-7077}
+  SPARK_MASTER_WEBUI_PORT: ${SPARK_MASTER_WEBUI_PORT:-8080}
+  SPARK_WORKER_PUBLIC_HOST: ${SPARK_WORKER_PUBLIC_HOST:-}
+  SPARK_WORKER_PORT: ${SPARK_WORKER_PORT:-7078}
+  SPARK_WORKER_WEBUI_PORT: ${SPARK_WORKER_WEBUI_PORT:-8081}
+  SPARK_THRIFT_PUBLIC_HOST: ${SPARK_THRIFT_PUBLIC_HOST:-}
+  SPARK_THRIFT_PORT: ${SPARK_THRIFT_PORT:-10000}
+  SPARK_THRIFT_UI_PORT: ${SPARK_THRIFT_UI_PORT:-4040}
+  SPARK_THRIFT_DRIVER_PORT: ${SPARK_THRIFT_DRIVER_PORT:-39000}
+  SPARK_THRIFT_BLOCKMANAGER_PORT: ${SPARK_THRIFT_BLOCKMANAGER_PORT:-39001}
+  HIVE_METASTORE_PUBLIC_HOST: ${HIVE_METASTORE_PUBLIC_HOST:-}
+  HIVE_METASTORE_PORT: ${HIVE_METASTORE_PORT:-9083}
+  HIVE_METASTORE_URI: ${HIVE_METASTORE_URI:-}
+services:
+  lakehouse-config:
+    image: alpine:3.20
+    container_name: lakehouse-config
+    restart: 'no'
+    cpus: ${LAKEHOUSE_CONFIG_CPUS:-0.25}
+    mem_limit: ${LAKEHOUSE_CONFIG_MEMORY:-256m}
+    network_mode: host
+    environment:
+      AWS_ACCESS_KEY_ID: ${AWS_ACCESS_KEY_ID:-lakehouse-user}
+      AWS_SECRET_ACCESS_KEY: ${AWS_SECRET_ACCESS_KEY:-lakehouse-password}
+      AWS_REGION: ${AWS_REGION:-us-east-1}
+      AWS_DEFAULT_REGION: ${AWS_REGION:-us-east-1}
+      S3_ENDPOINT: ${S3_ENDPOINT:-http://host.docker.internal:9000}
+      S3_WAREHOUSE: ${S3_WAREHOUSE:-s3a://lakehouse/warehouse}
+      S3_PATH_STYLE_ACCESS: ${S3_PATH_STYLE_ACCESS:-true}
+      S3_SSL_ENABLED: ${S3_SSL_ENABLED:-false}
+      POSTGRES_HOST: ${POSTGRES_HOST:-host.docker.internal}
+      POSTGRES_PORT: ${POSTGRES_PORT:-5432}
+      POSTGRES_DB: ${POSTGRES_DB:-hive}
+      POSTGRES_USER: ${POSTGRES_USER:-hive}
+      POSTGRES_PASSWORD: ${POSTGRES_PASSWORD:-hive123}
+      POSTGRES_JDBC_PARAMS: ${POSTGRES_JDBC_PARAMS:-}
+      SPARK_PUBLIC_HOST: ${SPARK_PUBLIC_HOST:?Set SPARK_PUBLIC_HOST to the host IP or DNS name reachable by Spark clients/workers}
+      SPARK_MASTER_BIND_HOST: ${SPARK_MASTER_BIND_HOST:-}
+      SPARK_WORKER_BIND_HOST: ${SPARK_WORKER_BIND_HOST:-}
+      SPARK_THRIFT_BIND_HOST: ${SPARK_THRIFT_BIND_HOST:-}
+      SPARK_DRIVER_BIND_ADDRESS: ${SPARK_DRIVER_BIND_ADDRESS:-}
+      HIVE_METASTORE_BIND_HOST: ${HIVE_METASTORE_BIND_HOST:-}
+      SPARK_MASTER_PORT: ${SPARK_MASTER_PORT:-7077}
+      SPARK_MASTER_WEBUI_PORT: ${SPARK_MASTER_WEBUI_PORT:-8080}
+      SPARK_WORKER_PUBLIC_HOST: ${SPARK_WORKER_PUBLIC_HOST:-}
+      SPARK_WORKER_PORT: ${SPARK_WORKER_PORT:-7078}
+      SPARK_WORKER_WEBUI_PORT: ${SPARK_WORKER_WEBUI_PORT:-8081}
+      SPARK_THRIFT_PUBLIC_HOST: ${SPARK_THRIFT_PUBLIC_HOST:-}
+      SPARK_THRIFT_PORT: ${SPARK_THRIFT_PORT:-10000}
+      SPARK_THRIFT_UI_PORT: ${SPARK_THRIFT_UI_PORT:-4040}
+      SPARK_THRIFT_DRIVER_PORT: ${SPARK_THRIFT_DRIVER_PORT:-39000}
+      SPARK_THRIFT_BLOCKMANAGER_PORT: ${SPARK_THRIFT_BLOCKMANAGER_PORT:-39001}
+      HIVE_METASTORE_PUBLIC_HOST: ${HIVE_METASTORE_PUBLIC_HOST:-}
+      HIVE_METASTORE_PORT: ${HIVE_METASTORE_PORT:-9083}
+      HIVE_METASTORE_URI: ${HIVE_METASTORE_URI:-}
+    volumes:
+    - lakehouse-conf:/opt/lakehouse/conf
+    command:
+    - /bin/sh
+    - -ec
+    - |
+      mkdir -p /opt/lakehouse/conf
+
+      HIVE_METASTORE_ADVERTISED_HOST="$${HIVE_METASTORE_PUBLIC_HOST:-$${SPARK_PUBLIC_HOST}}"
+      HIVE_METASTORE_ADVERTISED_PORT="$${HIVE_METASTORE_PORT:-9083}"
+      HIVE_METASTORE_EFFECTIVE_URI="$${HIVE_METASTORE_URI:-thrift://$${HIVE_METASTORE_ADVERTISED_HOST}:$${HIVE_METASTORE_ADVERTISED_PORT}}"
+      HIVE_METASTORE_EFFECTIVE_BIND_HOST="$${HIVE_METASTORE_BIND_HOST:-$${HIVE_METASTORE_ADVERTISED_HOST}}"
+      SPARK_MASTER_EFFECTIVE_BIND_HOST="$${SPARK_MASTER_BIND_HOST:-$${SPARK_PUBLIC_HOST}}"
+      SPARK_DRIVER_EFFECTIVE_BIND_ADDRESS="$${SPARK_DRIVER_BIND_ADDRESS:-$${SPARK_PUBLIC_HOST}}"
+      SPARK_MASTER_URL="spark://$${SPARK_PUBLIC_HOST}:$${SPARK_MASTER_PORT}"
+
+      echo "Spark public host: $${SPARK_PUBLIC_HOST}"
+      echo "Spark master URL: $${SPARK_MASTER_URL}"
+      echo "Spark master bind host: $${SPARK_MASTER_EFFECTIVE_BIND_HOST}"
+      echo "Spark default driver bind address: $${SPARK_DRIVER_EFFECTIVE_BIND_ADDRESS}"
+      echo "Hive Metastore URI for Spark clients: $${HIVE_METASTORE_EFFECTIVE_URI}"
+      echo "Hive Metastore bind host: $${HIVE_METASTORE_EFFECTIVE_BIND_HOST}"
+
+      cat > /opt/lakehouse/conf/hive-site.xml <<EOF_HIVE
+      <?xml version="1.0"?>
+      <?xml-stylesheet type="text/xsl" href="configuration.xsl"?>
+      <configuration>
+        <property>
+          <name>hive.metastore.uris</name>
+          <value>$${HIVE_METASTORE_EFFECTIVE_URI}</value>
+        </property>
+        <property>
+          <name>hive.metastore.thrift.bind.host</name>
+          <value>$${HIVE_METASTORE_EFFECTIVE_BIND_HOST}</value>
+        </property>
+        <property>
+          <name>javax.jdo.option.ConnectionURL</name>
+          <value>jdbc:postgresql://$${POSTGRES_HOST}:$${POSTGRES_PORT}/$${POSTGRES_DB}$${POSTGRES_JDBC_PARAMS}</value>
+        </property>
+        <property>
+          <name>javax.jdo.option.ConnectionDriverName</name>
+          <value>org.postgresql.Driver</value>
+        </property>
+        <property>
+          <name>javax.jdo.option.ConnectionUserName</name>
+          <value>$${POSTGRES_USER}</value>
+        </property>
+        <property>
+          <name>javax.jdo.option.ConnectionPassword</name>
+          <value>$${POSTGRES_PASSWORD}</value>
+        </property>
+        <property>
+          <name>datanucleus.autoCreateSchema</name>
+          <value>false</value>
+        </property>
+        <property>
+          <name>hive.metastore.schema.verification</name>
+          <value>true</value>
+        </property>
+        <property>
+          <name>hive.metastore.warehouse.dir</name>
+          <value>$${S3_WAREHOUSE}</value>
+        </property>
+        <property>
+          <name>fs.s3a.impl</name>
+          <value>org.apache.hadoop.fs.s3a.S3AFileSystem</value>
+        </property>
+        <property>
+          <name>fs.s3a.endpoint</name>
+          <value>$${S3_ENDPOINT}</value>
+        </property>
+        <property>
+          <name>fs.s3a.path.style.access</name>
+          <value>$${S3_PATH_STYLE_ACCESS}</value>
+        </property>
+        <property>
+          <name>fs.s3a.connection.ssl.enabled</name>
+          <value>$${S3_SSL_ENABLED}</value>
+        </property>
+        <property>
+          <name>fs.s3a.aws.credentials.provider</name>
+          <value>org.apache.hadoop.fs.s3a.SimpleAWSCredentialsProvider</value>
+        </property>
+        <property>
+          <name>fs.s3a.access.key</name>
+          <value>$${AWS_ACCESS_KEY_ID}</value>
+        </property>
+        <property>
+          <name>fs.s3a.secret.key</name>
+          <value>$${AWS_SECRET_ACCESS_KEY}</value>
+        </property>
+      </configuration>
+      EOF_HIVE
+
+      cat > /opt/lakehouse/conf/core-site.xml <<EOF_CORE
+      <configuration>
+        <property>
+          <name>fs.s3a.impl</name>
+          <value>org.apache.hadoop.fs.s3a.S3AFileSystem</value>
+        </property>
+        <property>
+          <name>fs.s3a.endpoint</name>
+          <value>$${S3_ENDPOINT}</value>
+        </property>
+        <property>
+          <name>fs.s3a.path.style.access</name>
+          <value>$${S3_PATH_STYLE_ACCESS}</value>
+        </property>
+        <property>
+          <name>fs.s3a.connection.ssl.enabled</name>
+          <value>$${S3_SSL_ENABLED}</value>
+        </property>
+        <property>
+          <name>fs.s3a.aws.credentials.provider</name>
+          <value>org.apache.hadoop.fs.s3a.SimpleAWSCredentialsProvider</value>
+        </property>
+        <property>
+          <name>fs.s3a.access.key</name>
+          <value>$${AWS_ACCESS_KEY_ID}</value>
+        </property>
+        <property>
+          <name>fs.s3a.secret.key</name>
+          <value>$${AWS_SECRET_ACCESS_KEY}</value>
+        </property>
+        <property>
+          <name>fs.s3a.attempts.maximum</name>
+          <value>5</value>
+        </property>
+      </configuration>
+      EOF_CORE
+
+      cat > /opt/lakehouse/conf/spark-defaults.conf <<EOF_SPARK
+      spark.master                                      $${SPARK_MASTER_URL}
+      spark.driver.bindAddress                         $${SPARK_DRIVER_EFFECTIVE_BIND_ADDRESS}
+      spark.network.timeout                            300s
+
+      spark.sql.catalogImplementation                  hive
+      spark.hadoop.hive.metastore.uris                 $${HIVE_METASTORE_EFFECTIVE_URI}
+      spark.sql.hive.metastore.version                 3.1.3
+      spark.sql.hive.metastore.jars                    path
+      spark.sql.hive.metastore.jars.path               /opt/lakehouse/jars/ivy/*
+      spark.sql.warehouse.dir                          $${S3_WAREHOUSE}
+
+      spark.driver.extraClassPath                      /opt/lakehouse/jars/spark/*
+      spark.executor.extraClassPath                    /opt/lakehouse/jars/spark/*
+
+      spark.sql.extensions                             io.delta.sql.DeltaSparkSessionExtension,org.apache.iceberg.spark.extensions.IcebergSparkSessionExtensions
+      spark.sql.catalog.spark_catalog                  org.apache.spark.sql.delta.catalog.DeltaCatalog
+
+      spark.sql.catalog.iceberg                        org.apache.iceberg.spark.SparkCatalog
+      spark.sql.catalog.iceberg.type                   hive
+      spark.sql.catalog.iceberg.uri                    $${HIVE_METASTORE_EFFECTIVE_URI}
+      spark.sql.catalog.iceberg.warehouse              $${S3_WAREHOUSE}
+
+      spark.hadoop.fs.s3a.impl                         org.apache.hadoop.fs.s3a.S3AFileSystem
+      spark.hadoop.fs.s3a.endpoint                     $${S3_ENDPOINT}
+      spark.hadoop.fs.s3a.path.style.access            $${S3_PATH_STYLE_ACCESS}
+      spark.hadoop.fs.s3a.connection.ssl.enabled       $${S3_SSL_ENABLED}
+      spark.hadoop.fs.s3a.aws.credentials.provider     org.apache.hadoop.fs.s3a.SimpleAWSCredentialsProvider
+      spark.hadoop.fs.s3a.access.key                   $${AWS_ACCESS_KEY_ID}
+      spark.hadoop.fs.s3a.secret.key                   $${AWS_SECRET_ACCESS_KEY}
+
+      spark.eventLog.enabled                           false
+      EOF_SPARK
+
+      echo "Generated Hive and Spark configuration:"
+      ls -l /opt/lakehouse/conf
+  hive-metastore-init:
+    image: apache/hive:3.1.3
+    container_name: lakehouse-hive-metastore-init
+    user: root
+    entrypoint:
+    - /bin/bash
+    - -lc
+    restart: 'no'
+    cpus: ${HIVE_METASTORE_INIT_CPUS:-1.00}
+    mem_limit: ${HIVE_METASTORE_INIT_MEMORY:-1g}
+    network_mode: host
+    environment:
+      AWS_ACCESS_KEY_ID: ${AWS_ACCESS_KEY_ID:-lakehouse-user}
+      AWS_SECRET_ACCESS_KEY: ${AWS_SECRET_ACCESS_KEY:-lakehouse-password}
+      AWS_REGION: ${AWS_REGION:-us-east-1}
+      AWS_DEFAULT_REGION: ${AWS_REGION:-us-east-1}
+      S3_ENDPOINT: ${S3_ENDPOINT:-http://host.docker.internal:9000}
+      S3_WAREHOUSE: ${S3_WAREHOUSE:-s3a://lakehouse/warehouse}
+      S3_PATH_STYLE_ACCESS: ${S3_PATH_STYLE_ACCESS:-true}
+      S3_SSL_ENABLED: ${S3_SSL_ENABLED:-false}
+      POSTGRES_HOST: ${POSTGRES_HOST:-host.docker.internal}
+      POSTGRES_PORT: ${POSTGRES_PORT:-5432}
+      POSTGRES_DB: ${POSTGRES_DB:-hive}
+      POSTGRES_USER: ${POSTGRES_USER:-hive}
+      POSTGRES_PASSWORD: ${POSTGRES_PASSWORD:-hive123}
+      POSTGRES_JDBC_PARAMS: ${POSTGRES_JDBC_PARAMS:-}
+      SPARK_PUBLIC_HOST: ${SPARK_PUBLIC_HOST:?Set SPARK_PUBLIC_HOST to the host IP or DNS name reachable by Spark clients/workers}
+      SPARK_MASTER_BIND_HOST: ${SPARK_MASTER_BIND_HOST:-}
+      SPARK_WORKER_BIND_HOST: ${SPARK_WORKER_BIND_HOST:-}
+      SPARK_THRIFT_BIND_HOST: ${SPARK_THRIFT_BIND_HOST:-}
+      SPARK_DRIVER_BIND_ADDRESS: ${SPARK_DRIVER_BIND_ADDRESS:-}
+      HIVE_METASTORE_BIND_HOST: ${HIVE_METASTORE_BIND_HOST:-}
+      SPARK_MASTER_PORT: ${SPARK_MASTER_PORT:-7077}
+      SPARK_MASTER_WEBUI_PORT: ${SPARK_MASTER_WEBUI_PORT:-8080}
+      SPARK_WORKER_PUBLIC_HOST: ${SPARK_WORKER_PUBLIC_HOST:-}
+      SPARK_WORKER_PORT: ${SPARK_WORKER_PORT:-7078}
+      SPARK_WORKER_WEBUI_PORT: ${SPARK_WORKER_WEBUI_PORT:-8081}
+      SPARK_THRIFT_PUBLIC_HOST: ${SPARK_THRIFT_PUBLIC_HOST:-}
+      SPARK_THRIFT_PORT: ${SPARK_THRIFT_PORT:-10000}
+      SPARK_THRIFT_UI_PORT: ${SPARK_THRIFT_UI_PORT:-4040}
+      SPARK_THRIFT_DRIVER_PORT: ${SPARK_THRIFT_DRIVER_PORT:-39000}
+      SPARK_THRIFT_BLOCKMANAGER_PORT: ${SPARK_THRIFT_BLOCKMANAGER_PORT:-39001}
+      HIVE_METASTORE_PUBLIC_HOST: ${HIVE_METASTORE_PUBLIC_HOST:-}
+      HIVE_METASTORE_PORT: ${HIVE_METASTORE_PORT:-9083}
+      HIVE_METASTORE_URI: ${HIVE_METASTORE_URI:-}
+      HIVE_AUX_JARS_PATH: /opt/hive/ext-jars
+      HADOOP_CLASSPATH: /opt/hive/ext-jars/*
+    volumes:
+    - lakehouse-conf:/opt/lakehouse/conf:ro
+    - ${LOCAL_JARS_DIR:-./lakehouse-jars}/hive:/opt/hive/ext-jars:ro
+    command:
+    - |
+      set -euo pipefail
+      wait_for_file() {
+        target="$${1}"
+        label="$${2}"
+        for i in $$(seq 1 60); do
+          if ls $${target} >/dev/null 2>&1; then
+            echo "$${label} is available: $${target}"
+            return 0
+          fi
+          sleep 1
+        done
+        echo "ERROR: timed out waiting for $${label}: $${target}" >&2
+        exit 1
+      }
+
+      wait_for_file "/opt/lakehouse/conf/hive-site.xml" "hive-site.xml"
+      wait_for_file "/opt/lakehouse/conf/core-site.xml" "core-site.xml"
+      wait_for_file "/opt/hive/ext-jars/postgresql-*.jar" "PostgreSQL JDBC driver"
+      wait_for_file "/opt/hive/ext-jars/hadoop-aws-*.jar" "hadoop-aws JAR"
+      wait_for_file "/opt/hive/ext-jars/aws-java-sdk-bundle-*.jar" "AWS SDK bundle JAR"
+
+      export HIVE_CONF_DIR=/opt/hive/conf
+      export HADOOP_CONF_DIR=/opt/hive/conf
+      export HIVE_AUX_JARS_PATH=/opt/hive/ext-jars
+      export HADOOP_CLASSPATH=/opt/hive/ext-jars/*
+      cp /opt/lakehouse/conf/hive-site.xml /opt/hive/conf/hive-site.xml
+      cp /opt/lakehouse/conf/core-site.xml /opt/hive/conf/core-site.xml
+
+      # apache/hive:3.1.3 can include an old PostgreSQL JDBC driver in /opt/hive/lib.
+      # If that driver wins in the classpath, PostgreSQL SCRAM authentication fails with:
+      # "The authentication type 10 is not supported".
+      echo "Replacing bundled PostgreSQL JDBC driver, if present..."
+      find /opt/hive/lib -maxdepth 1 -type f -name 'postgresql*.jar' -print -delete || true
+      cp /opt/hive/ext-jars/postgresql-*.jar /opt/hive/lib/
+      echo "PostgreSQL JDBC driver selected by Hive:"
+      ls -lh /opt/hive/lib/postgresql*.jar
+
+      echo "Using Hive configuration:"
+      grep -A2 -B1 "javax.jdo.option.ConnectionURL" /opt/hive/conf/hive-site.xml || true
+      grep -A2 -B1 "ConnectionDriverName" /opt/hive/conf/hive-site.xml || true
+      echo "External Hive jars:"
+      ls -lh /opt/hive/ext-jars
+
+      POSTGRES_JDBC_URL="jdbc:postgresql://$${POSTGRES_HOST}:$${POSTGRES_PORT}/$${POSTGRES_DB}$${POSTGRES_JDBC_PARAMS}"
+      echo "Waiting for external PostgreSQL at $${POSTGRES_HOST}:$${POSTGRES_PORT}..."
+      for i in $$(seq 1 60); do
+        if (echo > /dev/tcp/$${POSTGRES_HOST}/$${POSTGRES_PORT}) >/dev/null 2>&1; then
+          echo "PostgreSQL is reachable."
+          break
+        fi
+        if [ "$${i}" -eq 60 ]; then
+          echo "ERROR: PostgreSQL is not reachable at $${POSTGRES_HOST}:$${POSTGRES_PORT}" >&2
+          exit 1
+        fi
+        sleep 2
+      done
+
+      echo "Checking Hive Metastore schema..."
+      if /opt/hive/bin/schematool -dbType postgres -info -userName "$${POSTGRES_USER}" -passWord "$${POSTGRES_PASSWORD}" -url "$${POSTGRES_JDBC_URL}"; then
+        echo "Hive Metastore schema already initialized."
+      else
+        echo "Initializing Hive Metastore schema in external PostgreSQL..."
+        /opt/hive/bin/schematool -initSchema -dbType postgres -userName "$${POSTGRES_USER}" -passWord "$${POSTGRES_PASSWORD}" -url "$${POSTGRES_JDBC_URL}" -verbose
+      fi
+    depends_on:
+    - lakehouse-config
+  hive-metastore:
+    image: apache/hive:3.1.3
+    container_name: lakehouse-hive-metastore
+    user: root
+    entrypoint:
+    - /bin/bash
+    - -lc
+    restart: unless-stopped
+    cpus: ${HIVE_METASTORE_CPUS:-1.00}
+    mem_limit: ${HIVE_METASTORE_MEMORY:-2g}
+    network_mode: host
+    environment:
+      AWS_ACCESS_KEY_ID: ${AWS_ACCESS_KEY_ID:-lakehouse-user}
+      AWS_SECRET_ACCESS_KEY: ${AWS_SECRET_ACCESS_KEY:-lakehouse-password}
+      AWS_REGION: ${AWS_REGION:-us-east-1}
+      AWS_DEFAULT_REGION: ${AWS_REGION:-us-east-1}
+      S3_ENDPOINT: ${S3_ENDPOINT:-http://host.docker.internal:9000}
+      S3_WAREHOUSE: ${S3_WAREHOUSE:-s3a://lakehouse/warehouse}
+      S3_PATH_STYLE_ACCESS: ${S3_PATH_STYLE_ACCESS:-true}
+      S3_SSL_ENABLED: ${S3_SSL_ENABLED:-false}
+      POSTGRES_HOST: ${POSTGRES_HOST:-host.docker.internal}
+      POSTGRES_PORT: ${POSTGRES_PORT:-5432}
+      POSTGRES_DB: ${POSTGRES_DB:-hive}
+      POSTGRES_USER: ${POSTGRES_USER:-hive}
+      POSTGRES_PASSWORD: ${POSTGRES_PASSWORD:-hive123}
+      POSTGRES_JDBC_PARAMS: ${POSTGRES_JDBC_PARAMS:-}
+      SPARK_PUBLIC_HOST: ${SPARK_PUBLIC_HOST:?Set SPARK_PUBLIC_HOST to the host IP or DNS name reachable by Spark clients/workers}
+      SPARK_MASTER_BIND_HOST: ${SPARK_MASTER_BIND_HOST:-}
+      SPARK_WORKER_BIND_HOST: ${SPARK_WORKER_BIND_HOST:-}
+      SPARK_THRIFT_BIND_HOST: ${SPARK_THRIFT_BIND_HOST:-}
+      SPARK_DRIVER_BIND_ADDRESS: ${SPARK_DRIVER_BIND_ADDRESS:-}
+      HIVE_METASTORE_BIND_HOST: ${HIVE_METASTORE_BIND_HOST:-}
+      SPARK_MASTER_PORT: ${SPARK_MASTER_PORT:-7077}
+      SPARK_MASTER_WEBUI_PORT: ${SPARK_MASTER_WEBUI_PORT:-8080}
+      SPARK_WORKER_PUBLIC_HOST: ${SPARK_WORKER_PUBLIC_HOST:-}
+      SPARK_WORKER_PORT: ${SPARK_WORKER_PORT:-7078}
+      SPARK_WORKER_WEBUI_PORT: ${SPARK_WORKER_WEBUI_PORT:-8081}
+      SPARK_THRIFT_PUBLIC_HOST: ${SPARK_THRIFT_PUBLIC_HOST:-}
+      SPARK_THRIFT_PORT: ${SPARK_THRIFT_PORT:-10000}
+      SPARK_THRIFT_UI_PORT: ${SPARK_THRIFT_UI_PORT:-4040}
+      SPARK_THRIFT_DRIVER_PORT: ${SPARK_THRIFT_DRIVER_PORT:-39000}
+      SPARK_THRIFT_BLOCKMANAGER_PORT: ${SPARK_THRIFT_BLOCKMANAGER_PORT:-39001}
+      HIVE_METASTORE_PUBLIC_HOST: ${HIVE_METASTORE_PUBLIC_HOST:-}
+      HIVE_METASTORE_PORT: ${HIVE_METASTORE_PORT:-9083}
+      HIVE_METASTORE_URI: ${HIVE_METASTORE_URI:-}
+      HIVE_AUX_JARS_PATH: /opt/hive/ext-jars
+      HADOOP_CLASSPATH: /opt/hive/ext-jars/*
+    volumes:
+    - lakehouse-conf:/opt/lakehouse/conf:ro
+    - ${LOCAL_JARS_DIR:-./lakehouse-jars}/hive:/opt/hive/ext-jars:ro
+    command:
+    - |
+      set -euo pipefail
+      wait_for_file() {
+        target="$${1}"
+        label="$${2}"
+        for i in $$(seq 1 60); do
+          if ls $${target} >/dev/null 2>&1; then
+            echo "$${label} is available: $${target}"
+            return 0
+          fi
+          sleep 1
+        done
+        echo "ERROR: timed out waiting for $${label}: $${target}" >&2
+        exit 1
+      }
+
+      wait_for_file "/opt/lakehouse/conf/hive-site.xml" "hive-site.xml"
+      wait_for_file "/opt/lakehouse/conf/core-site.xml" "core-site.xml"
+      wait_for_file "/opt/hive/ext-jars/postgresql-*.jar" "PostgreSQL JDBC driver"
+      wait_for_file "/opt/hive/ext-jars/hadoop-aws-*.jar" "hadoop-aws JAR"
+      wait_for_file "/opt/hive/ext-jars/aws-java-sdk-bundle-*.jar" "AWS SDK bundle JAR"
+
+      export HIVE_CONF_DIR=/opt/hive/conf
+      export HADOOP_CONF_DIR=/opt/hive/conf
+      export HIVE_AUX_JARS_PATH=/opt/hive/ext-jars
+      export HADOOP_CLASSPATH=/opt/hive/ext-jars/*
+      cp /opt/lakehouse/conf/hive-site.xml /opt/hive/conf/hive-site.xml
+      cp /opt/lakehouse/conf/core-site.xml /opt/hive/conf/core-site.xml
+
+      # Force Hive Metastore to use the SCRAM-capable PostgreSQL JDBC driver.
+      echo "Replacing bundled PostgreSQL JDBC driver, if present..."
+      find /opt/hive/lib -maxdepth 1 -type f -name 'postgresql*.jar' -print -delete || true
+      cp /opt/hive/ext-jars/postgresql-*.jar /opt/hive/lib/
+      echo "PostgreSQL JDBC driver selected by Hive:"
+      ls -lh /opt/hive/lib/postgresql*.jar
+
+      HIVE_METASTORE_ADVERTISED_HOST="$${HIVE_METASTORE_PUBLIC_HOST:-$${SPARK_PUBLIC_HOST}}"
+      HIVE_METASTORE_EFFECTIVE_BIND_HOST="$${HIVE_METASTORE_BIND_HOST:-$${HIVE_METASTORE_ADVERTISED_HOST}}"
+      echo "Starting Hive Metastore on $${HIVE_METASTORE_EFFECTIVE_BIND_HOST}:$${HIVE_METASTORE_PORT}..."
+      grep -A2 -B1 "javax.jdo.option.ConnectionURL" /opt/hive/conf/hive-site.xml || true
+      grep -A2 -B1 "hive.metastore.thrift.bind.host" /opt/hive/conf/hive-site.xml || true
+      exec /opt/hive/bin/hive --service metastore -p "$${HIVE_METASTORE_PORT}"
+    depends_on:
+    - hive-metastore-init
+  spark-master:
+    image: apache/spark:3.5.6
+    user: root
+    restart: unless-stopped
+    environment:
+      SPARK_PUBLIC_HOST: ${SPARK_PUBLIC_HOST:?Set SPARK_PUBLIC_HOST to the host IP or DNS name reachable by Spark clients/workers}
+      SPARK_MASTER_BIND_HOST: ${SPARK_MASTER_BIND_HOST:-}
+      SPARK_WORKER_BIND_HOST: ${SPARK_WORKER_BIND_HOST:-}
+      SPARK_THRIFT_BIND_HOST: ${SPARK_THRIFT_BIND_HOST:-}
+      SPARK_DRIVER_BIND_ADDRESS: ${SPARK_DRIVER_BIND_ADDRESS:-}
+      HIVE_METASTORE_BIND_HOST: ${HIVE_METASTORE_BIND_HOST:-}
+      SPARK_MASTER_PORT: ${SPARK_MASTER_PORT:-7077}
+      SPARK_MASTER_WEBUI_PORT: ${SPARK_MASTER_WEBUI_PORT:-8080}
+      SPARK_WORKER_PUBLIC_HOST: ${SPARK_WORKER_PUBLIC_HOST:-}
+      SPARK_WORKER_PORT: ${SPARK_WORKER_PORT:-7078}
+      SPARK_WORKER_WEBUI_PORT: ${SPARK_WORKER_WEBUI_PORT:-8081}
+      SPARK_THRIFT_PUBLIC_HOST: ${SPARK_THRIFT_PUBLIC_HOST:-}
+      SPARK_THRIFT_PORT: ${SPARK_THRIFT_PORT:-10000}
+      SPARK_THRIFT_UI_PORT: ${SPARK_THRIFT_UI_PORT:-4040}
+      SPARK_THRIFT_DRIVER_PORT: ${SPARK_THRIFT_DRIVER_PORT:-39000}
+      SPARK_THRIFT_BLOCKMANAGER_PORT: ${SPARK_THRIFT_BLOCKMANAGER_PORT:-39001}
+      HIVE_METASTORE_PUBLIC_HOST: ${HIVE_METASTORE_PUBLIC_HOST:-}
+      HIVE_METASTORE_PORT: ${HIVE_METASTORE_PORT:-9083}
+      HIVE_METASTORE_URI: ${HIVE_METASTORE_URI:-}
+      AWS_ACCESS_KEY_ID: ${AWS_ACCESS_KEY_ID:-lakehouse-user}
+      AWS_SECRET_ACCESS_KEY: ${AWS_SECRET_ACCESS_KEY:-lakehouse-password}
+      AWS_REGION: ${AWS_REGION:-us-east-1}
+      AWS_DEFAULT_REGION: ${AWS_REGION:-us-east-1}
+      S3_ENDPOINT: ${S3_ENDPOINT:-http://host.docker.internal:9000}
+      S3_WAREHOUSE: ${S3_WAREHOUSE:-s3a://lakehouse/warehouse}
+      S3_PATH_STYLE_ACCESS: ${S3_PATH_STYLE_ACCESS:-true}
+      S3_SSL_ENABLED: ${S3_SSL_ENABLED:-false}
+      HOME: /tmp
+      SPARK_NO_DAEMONIZE: 'true'
+    volumes:
+    - lakehouse-conf:/opt/lakehouse/conf:ro
+    - ${LOCAL_JARS_DIR:-./lakehouse-jars}:/opt/lakehouse/jars:ro
+    network_mode: host
+    depends_on:
+    - lakehouse-config
+    container_name: lakehouse-spark-master
+    cpus: ${SPARK_MASTER_CPUS:-1.00}
+    mem_limit: ${SPARK_MASTER_MEMORY:-1g}
+    command:
+    - /bin/bash
+    - -lc
+    - |
+      set -e
+      mkdir -p /opt/spark/conf
+      wait_for_file() {
+        target="$${1}"
+        label="$${2}"
+        for i in $$(seq 1 60); do
+          if [ -f "$${target}" ]; then
+            echo "$${label} is available: $${target}"
+            return 0
+          fi
+          sleep 1
+        done
+        echo "ERROR: timed out waiting for $${label}: $${target}" >&2
+        exit 1
+      }
+
+      wait_for_file /opt/lakehouse/conf/spark-defaults.conf spark-defaults.conf
+
+      echo "Waiting for local Spark local runtime JARs..."
+      for i in $$(seq 1 120); do
+        if ls /opt/lakehouse/jars/spark/hadoop-aws-*.jar >/dev/null 2>&1 && ls /opt/lakehouse/jars/spark/aws-java-sdk-bundle-*.jar >/dev/null 2>&1; then
+          echo "Spark local runtime JARs are available:"
+          ls -lh /opt/lakehouse/jars/spark
+          break
+        fi
+        if [ "$${i}" -eq 120 ]; then
+          echo "ERROR: timed out waiting for Spark local runtime JARs in /opt/lakehouse/jars/spark" >&2
+          exit 1
+        fi
+        sleep 1
+      done
+      wait_for_file /opt/lakehouse/conf/core-site.xml core-site.xml
+      cp /opt/lakehouse/conf/spark-defaults.conf /opt/spark/conf/spark-defaults.conf
+      cp /opt/lakehouse/conf/core-site.xml /opt/spark/conf/core-site.xml
+      SPARK_MASTER_EFFECTIVE_BIND_HOST="$${SPARK_MASTER_BIND_HOST:-$${SPARK_PUBLIC_HOST}}"
+      echo "Starting Spark Master on $${SPARK_MASTER_EFFECTIVE_BIND_HOST}:$${SPARK_MASTER_PORT}"
+      echo "Spark Master URL for clients/workers: spark://$${SPARK_PUBLIC_HOST}:$${SPARK_MASTER_PORT}"
+      export SPARK_MASTER_HOST="$${SPARK_MASTER_EFFECTIVE_BIND_HOST}"
+      export SPARK_MASTER_PORT="$${SPARK_MASTER_PORT}"
+      export SPARK_MASTER_WEBUI_PORT="$${SPARK_MASTER_WEBUI_PORT}"
+      export SPARK_LOCAL_IP="$${SPARK_MASTER_EFFECTIVE_BIND_HOST}"
+      export SPARK_MASTER_OPTS="$${SPARK_MASTER_OPTS:-} -Dspark.driver.bindAddress=$${SPARK_MASTER_EFFECTIVE_BIND_HOST}"
+      exec /opt/spark/bin/spark-class org.apache.spark.deploy.master.Master --host "$${SPARK_MASTER_EFFECTIVE_BIND_HOST}" --port "$${SPARK_MASTER_PORT}" --webui-port "$${SPARK_MASTER_WEBUI_PORT}"
+  spark-worker:
+    image: apache/spark:3.5.6
+    user: root
+    restart: unless-stopped
+    environment:
+      SPARK_PUBLIC_HOST: ${SPARK_PUBLIC_HOST:?Set SPARK_PUBLIC_HOST to the host IP or DNS name reachable by Spark clients/workers}
+      SPARK_MASTER_BIND_HOST: ${SPARK_MASTER_BIND_HOST:-}
+      SPARK_WORKER_BIND_HOST: ${SPARK_WORKER_BIND_HOST:-}
+      SPARK_THRIFT_BIND_HOST: ${SPARK_THRIFT_BIND_HOST:-}
+      SPARK_DRIVER_BIND_ADDRESS: ${SPARK_DRIVER_BIND_ADDRESS:-}
+      HIVE_METASTORE_BIND_HOST: ${HIVE_METASTORE_BIND_HOST:-}
+      SPARK_MASTER_PORT: ${SPARK_MASTER_PORT:-7077}
+      SPARK_MASTER_WEBUI_PORT: ${SPARK_MASTER_WEBUI_PORT:-8080}
+      SPARK_WORKER_PUBLIC_HOST: ${SPARK_WORKER_PUBLIC_HOST:-}
+      SPARK_WORKER_PORT: ${SPARK_WORKER_PORT:-7078}
+      SPARK_WORKER_WEBUI_PORT: ${SPARK_WORKER_WEBUI_PORT:-8081}
+      SPARK_THRIFT_PUBLIC_HOST: ${SPARK_THRIFT_PUBLIC_HOST:-}
+      SPARK_THRIFT_PORT: ${SPARK_THRIFT_PORT:-10000}
+      SPARK_THRIFT_UI_PORT: ${SPARK_THRIFT_UI_PORT:-4040}
+      SPARK_THRIFT_DRIVER_PORT: ${SPARK_THRIFT_DRIVER_PORT:-39000}
+      SPARK_THRIFT_BLOCKMANAGER_PORT: ${SPARK_THRIFT_BLOCKMANAGER_PORT:-39001}
+      HIVE_METASTORE_PUBLIC_HOST: ${HIVE_METASTORE_PUBLIC_HOST:-}
+      HIVE_METASTORE_PORT: ${HIVE_METASTORE_PORT:-9083}
+      HIVE_METASTORE_URI: ${HIVE_METASTORE_URI:-}
+      AWS_ACCESS_KEY_ID: ${AWS_ACCESS_KEY_ID:-lakehouse-user}
+      AWS_SECRET_ACCESS_KEY: ${AWS_SECRET_ACCESS_KEY:-lakehouse-password}
+      AWS_REGION: ${AWS_REGION:-us-east-1}
+      AWS_DEFAULT_REGION: ${AWS_REGION:-us-east-1}
+      S3_ENDPOINT: ${S3_ENDPOINT:-http://host.docker.internal:9000}
+      S3_WAREHOUSE: ${S3_WAREHOUSE:-s3a://lakehouse/warehouse}
+      S3_PATH_STYLE_ACCESS: ${S3_PATH_STYLE_ACCESS:-true}
+      S3_SSL_ENABLED: ${S3_SSL_ENABLED:-false}
+      HOME: /tmp
+      SPARK_NO_DAEMONIZE: 'true'
+      SPARK_WORKER_CORES: ${SPARK_WORKER_CORES:-4}
+      SPARK_WORKER_MEMORY: ${SPARK_WORKER_MEMORY:-4g}
+    volumes:
+    - lakehouse-conf:/opt/lakehouse/conf:ro
+    - ${LOCAL_JARS_DIR:-./lakehouse-jars}:/opt/lakehouse/jars:ro
+    network_mode: host
+    depends_on:
+    - lakehouse-config
+    - spark-master
+    container_name: lakehouse-spark-worker-1
+    cpus: ${SPARK_WORKER_CONTAINER_CPUS:-4.00}
+    mem_limit: ${SPARK_WORKER_CONTAINER_MEMORY:-6g}
+    command:
+    - /bin/bash
+    - -lc
+    - |
+      set -e
+      mkdir -p /opt/spark/conf
+      wait_for_file() {
+        target="$${1}"
+        label="$${2}"
+        for i in $$(seq 1 60); do
+          if [ -f "$${target}" ]; then
+            echo "$${label} is available: $${target}"
+            return 0
+          fi
+          sleep 1
+        done
+        echo "ERROR: timed out waiting for $${label}: $${target}" >&2
+        exit 1
+      }
+
+      wait_for_file /opt/lakehouse/conf/spark-defaults.conf spark-defaults.conf
+
+      echo "Waiting for local Spark local runtime JARs..."
+      for i in $$(seq 1 120); do
+        if ls /opt/lakehouse/jars/spark/hadoop-aws-*.jar >/dev/null 2>&1 && ls /opt/lakehouse/jars/spark/aws-java-sdk-bundle-*.jar >/dev/null 2>&1; then
+          echo "Spark local runtime JARs are available:"
+          ls -lh /opt/lakehouse/jars/spark
+          break
+        fi
+        if [ "$${i}" -eq 120 ]; then
+          echo "ERROR: timed out waiting for Spark local runtime JARs in /opt/lakehouse/jars/spark" >&2
+          exit 1
+        fi
+        sleep 1
+      done
+      wait_for_file /opt/lakehouse/conf/core-site.xml core-site.xml
+      cp /opt/lakehouse/conf/spark-defaults.conf /opt/spark/conf/spark-defaults.conf
+      cp /opt/lakehouse/conf/core-site.xml /opt/spark/conf/core-site.xml
+      SPARK_WORKER_EFFECTIVE_HOST="$${SPARK_WORKER_BIND_HOST:-$${SPARK_WORKER_PUBLIC_HOST:-$${SPARK_PUBLIC_HOST}}}"
+      SPARK_MASTER_URL="spark://$${SPARK_PUBLIC_HOST}:$${SPARK_MASTER_PORT}"
+      echo "Waiting for Spark Master at $${SPARK_PUBLIC_HOST}:$${SPARK_MASTER_PORT}..."
+      for i in $$(seq 1 60); do
+        if (echo > /dev/tcp/$${SPARK_PUBLIC_HOST}/$${SPARK_MASTER_PORT}) >/dev/null 2>&1; then
+          echo "Spark Master is reachable."
+          break
+        fi
+        if [ "$${i}" -eq 60 ]; then
+          echo "ERROR: Spark Master is not reachable at $${SPARK_PUBLIC_HOST}:$${SPARK_MASTER_PORT}." >&2
+          exit 1
+        fi
+        sleep 2
+      done
+      echo "Starting Spark Worker on $${SPARK_WORKER_EFFECTIVE_HOST}:$${SPARK_WORKER_PORT}"
+      export SPARK_LOCAL_IP="$${SPARK_WORKER_EFFECTIVE_HOST}"
+      exec /opt/spark/bin/spark-class org.apache.spark.deploy.worker.Worker "$${SPARK_MASTER_URL}" --host "$${SPARK_WORKER_EFFECTIVE_HOST}" --port "$${SPARK_WORKER_PORT}" --cores "$${SPARK_WORKER_CORES}" --memory "$${SPARK_WORKER_MEMORY}" --webui-port "$${SPARK_WORKER_WEBUI_PORT}"
+  spark-thrift:
+    image: apache/spark:3.5.6
+    user: root
+    restart: unless-stopped
+    environment:
+      SPARK_PUBLIC_HOST: ${SPARK_PUBLIC_HOST:?Set SPARK_PUBLIC_HOST to the host IP or DNS name reachable by Spark clients/workers}
+      SPARK_MASTER_BIND_HOST: ${SPARK_MASTER_BIND_HOST:-}
+      SPARK_WORKER_BIND_HOST: ${SPARK_WORKER_BIND_HOST:-}
+      SPARK_THRIFT_BIND_HOST: ${SPARK_THRIFT_BIND_HOST:-}
+      SPARK_DRIVER_BIND_ADDRESS: ${SPARK_DRIVER_BIND_ADDRESS:-}
+      HIVE_METASTORE_BIND_HOST: ${HIVE_METASTORE_BIND_HOST:-}
+      SPARK_MASTER_PORT: ${SPARK_MASTER_PORT:-7077}
+      SPARK_MASTER_WEBUI_PORT: ${SPARK_MASTER_WEBUI_PORT:-8080}
+      SPARK_WORKER_PUBLIC_HOST: ${SPARK_WORKER_PUBLIC_HOST:-}
+      SPARK_WORKER_PORT: ${SPARK_WORKER_PORT:-7078}
+      SPARK_WORKER_WEBUI_PORT: ${SPARK_WORKER_WEBUI_PORT:-8081}
+      SPARK_THRIFT_PUBLIC_HOST: ${SPARK_THRIFT_PUBLIC_HOST:-}
+      SPARK_THRIFT_PORT: ${SPARK_THRIFT_PORT:-10000}
+      SPARK_THRIFT_UI_PORT: ${SPARK_THRIFT_UI_PORT:-4040}
+      SPARK_THRIFT_DRIVER_PORT: ${SPARK_THRIFT_DRIVER_PORT:-39000}
+      SPARK_THRIFT_BLOCKMANAGER_PORT: ${SPARK_THRIFT_BLOCKMANAGER_PORT:-39001}
+      HIVE_METASTORE_PUBLIC_HOST: ${HIVE_METASTORE_PUBLIC_HOST:-}
+      HIVE_METASTORE_PORT: ${HIVE_METASTORE_PORT:-9083}
+      HIVE_METASTORE_URI: ${HIVE_METASTORE_URI:-}
+      AWS_ACCESS_KEY_ID: ${AWS_ACCESS_KEY_ID:-lakehouse-user}
+      AWS_SECRET_ACCESS_KEY: ${AWS_SECRET_ACCESS_KEY:-lakehouse-password}
+      AWS_REGION: ${AWS_REGION:-us-east-1}
+      AWS_DEFAULT_REGION: ${AWS_REGION:-us-east-1}
+      S3_ENDPOINT: ${S3_ENDPOINT:-http://host.docker.internal:9000}
+      S3_WAREHOUSE: ${S3_WAREHOUSE:-s3a://lakehouse/warehouse}
+      S3_PATH_STYLE_ACCESS: ${S3_PATH_STYLE_ACCESS:-true}
+      S3_SSL_ENABLED: ${S3_SSL_ENABLED:-false}
+      HOME: /tmp
+      SPARK_NO_DAEMONIZE: 'true'
+      SPARK_THRIFT_DRIVER_MEMORY: ${SPARK_THRIFT_DRIVER_MEMORY:-1g}
+      SPARK_THRIFT_EXECUTOR_INSTANCES: ${SPARK_THRIFT_EXECUTOR_INSTANCES:-1}
+      SPARK_THRIFT_EXECUTOR_CORES: ${SPARK_THRIFT_EXECUTOR_CORES:-1}
+      SPARK_THRIFT_EXECUTOR_MEMORY: ${SPARK_THRIFT_EXECUTOR_MEMORY:-1g}
+      SPARK_THRIFT_EXECUTOR_MEMORY_OVERHEAD: ${SPARK_THRIFT_EXECUTOR_MEMORY_OVERHEAD:-256m}
+      SPARK_THRIFT_CORES_MAX: ${SPARK_THRIFT_CORES_MAX:-1}
+    volumes:
+    - lakehouse-conf:/opt/lakehouse/conf:ro
+    - ${LOCAL_JARS_DIR:-./lakehouse-jars}:/opt/lakehouse/jars:ro
+    network_mode: host
+    depends_on:
+    - lakehouse-config
+    - spark-master
+    - spark-worker
+    - hive-metastore
+    container_name: lakehouse-spark-thrift
+    cpus: ${SPARK_THRIFT_CPUS:-2.00}
+    mem_limit: ${SPARK_THRIFT_MEMORY:-4g}
+    command:
+    - /bin/bash
+    - -lc
+    - |
+      set -e
+      mkdir -p /opt/spark/conf /tmp/.ivy2
+      wait_for_file() {
+        target="$${1}"
+        label="$${2}"
+        for i in $$(seq 1 60); do
+          if [ -f "$${target}" ]; then
+            echo "$${label} is available: $${target}"
+            return 0
+          fi
+          sleep 1
+        done
+        echo "ERROR: timed out waiting for $${label}: $${target}" >&2
+        exit 1
+      }
+
+      wait_for_file /opt/lakehouse/conf/spark-defaults.conf spark-defaults.conf
+
+      echo "Waiting for local Spark local runtime JARs..."
+      for i in $$(seq 1 120); do
+        if ls /opt/lakehouse/jars/spark/hadoop-aws-*.jar >/dev/null 2>&1 && ls /opt/lakehouse/jars/spark/aws-java-sdk-bundle-*.jar >/dev/null 2>&1; then
+          echo "Spark local runtime JARs are available:"
+          ls -lh /opt/lakehouse/jars/spark
+          break
+        fi
+        if [ "$${i}" -eq 120 ]; then
+          echo "ERROR: timed out waiting for Spark local runtime JARs in /opt/lakehouse/jars/spark" >&2
+          exit 1
+        fi
+        sleep 1
+      done
+      wait_for_file /opt/lakehouse/conf/core-site.xml core-site.xml
+
+      # Validate local Hive Metastore client JARs. Spark will load this directory through spark.sql.hive.metastore.jars.path.
+      for i in $$(seq 1 60); do
+        if ls /opt/lakehouse/jars/ivy/hive-metastore-*.jar >/dev/null 2>&1 && ls /opt/lakehouse/jars/ivy/hive-exec-*.jar >/dev/null 2>&1; then
+          echo "Hive Metastore client JARs are available:"
+          ls /opt/lakehouse/jars/ivy/hive-metastore-*.jar /opt/lakehouse/jars/ivy/hive-exec-*.jar
+          break
+        fi
+        if [ "$${i}" -eq 60 ]; then
+          echo "ERROR: timed out waiting for Hive Metastore client JARs in /opt/lakehouse/jars/ivy" >&2
+          exit 1
+        fi
+        sleep 1
+      done
+      chmod -R 777 /tmp/.ivy2
+      cp /opt/lakehouse/conf/spark-defaults.conf /opt/spark/conf/spark-defaults.conf
+      cp /opt/lakehouse/conf/core-site.xml /opt/spark/conf/core-site.xml
+      cp /opt/lakehouse/conf/hive-site.xml /opt/spark/conf/hive-site.xml
+
+      SPARK_MASTER_URL="spark://$${SPARK_PUBLIC_HOST}:$${SPARK_MASTER_PORT}"
+      SPARK_THRIFT_ADVERTISED_HOST="$${SPARK_THRIFT_PUBLIC_HOST:-$${SPARK_PUBLIC_HOST}}"
+      SPARK_THRIFT_EFFECTIVE_BIND_HOST="$${SPARK_THRIFT_BIND_HOST:-$${SPARK_THRIFT_ADVERTISED_HOST}}"
+      HIVE_METASTORE_ADVERTISED_HOST="$${HIVE_METASTORE_PUBLIC_HOST:-$${SPARK_PUBLIC_HOST}}"
+      HIVE_METASTORE_ADVERTISED_PORT="$${HIVE_METASTORE_PORT:-9083}"
+      HIVE_METASTORE_EFFECTIVE_URI="$${HIVE_METASTORE_URI:-thrift://$${HIVE_METASTORE_ADVERTISED_HOST}:$${HIVE_METASTORE_ADVERTISED_PORT}}"
+
+      echo "Waiting for Spark Master and Hive Metastore through public addresses..."
+      for endpoint in "$${SPARK_PUBLIC_HOST}:$${SPARK_MASTER_PORT}" "$${HIVE_METASTORE_ADVERTISED_HOST}:$${HIVE_METASTORE_ADVERTISED_PORT}"; do
+        host="$${endpoint%:*}"
+        p="$${endpoint#*:}"
+        for i in $$(seq 1 60); do
+          if (echo > /dev/tcp/$${host}/$${p}) >/dev/null 2>&1; then
+            echo "$${host}:$${p} is reachable."
+            break
+          fi
+          if [ "$${i}" -eq 60 ]; then
+            echo "ERROR: $${host}:$${p} is not reachable." >&2
+            exit 1
+          fi
+          sleep 2
+        done
+      done
+
+      echo "Starting Spark Thrift Server against $${SPARK_MASTER_URL}"
+      echo "Thrift Server bind host: $${SPARK_THRIFT_EFFECTIVE_BIND_HOST}"
+      echo "Thrift driver advertised as $${SPARK_THRIFT_ADVERTISED_HOST}:$${SPARK_THRIFT_DRIVER_PORT}"
+      echo "Thrift resource footprint: driver=$${SPARK_THRIFT_DRIVER_MEMORY}, executor_instances=$${SPARK_THRIFT_EXECUTOR_INSTANCES}, executor_cores=$${SPARK_THRIFT_EXECUTOR_CORES}, executor_memory=$${SPARK_THRIFT_EXECUTOR_MEMORY}, cores_max=$${SPARK_THRIFT_CORES_MAX}"
+      export SPARK_LOCAL_IP="$${SPARK_THRIFT_EFFECTIVE_BIND_HOST}"
+      exec /opt/spark/sbin/start-thriftserver.sh --master "$${SPARK_MASTER_URL}" --driver-memory "$${SPARK_THRIFT_DRIVER_MEMORY}" --hiveconf hive.metastore.uris="$${HIVE_METASTORE_EFFECTIVE_URI}" --hiveconf hive.server2.thrift.bind.host="$${SPARK_THRIFT_EFFECTIVE_BIND_HOST}" --hiveconf hive.server2.thrift.port="$${SPARK_THRIFT_PORT}" --conf spark.driver.host="$${SPARK_THRIFT_ADVERTISED_HOST}" --conf spark.driver.bindAddress="$${SPARK_THRIFT_EFFECTIVE_BIND_HOST}" --conf spark.driver.port="$${SPARK_THRIFT_DRIVER_PORT}" --conf spark.blockManager.port="$${SPARK_THRIFT_BLOCKMANAGER_PORT}" --conf spark.ui.port="$${SPARK_THRIFT_UI_PORT}" --conf spark.executor.instances="$${SPARK_THRIFT_EXECUTOR_INSTANCES}" --conf spark.executor.cores="$${SPARK_THRIFT_EXECUTOR_CORES}" --conf spark.executor.memory="$${SPARK_THRIFT_EXECUTOR_MEMORY}" --conf spark.executor.memoryOverhead="$${SPARK_THRIFT_EXECUTOR_MEMORY_OVERHEAD}" --conf spark.cores.max="$${SPARK_THRIFT_CORES_MAX}" --conf spark.dynamicAllocation.enabled=false --conf spark.jars.ivy=/tmp/.ivy2 --conf spark.driver.extraJavaOptions="-Duser.home=/tmp -Divy.home=/tmp/.ivy2"
+  spark-connect:
+    image: apache/spark:3.5.6
+    container_name: lakehouse-spark-connect
+    user: root
+    restart: unless-stopped
+    network_mode: host
+    cpus: ${SPARK_CONNECT_CPUS:-2.00}
+    mem_limit: ${SPARK_CONNECT_MEMORY:-4g}
+    environment:
+      AWS_ACCESS_KEY_ID: ${AWS_ACCESS_KEY_ID:-lakehouse-user}
+      AWS_SECRET_ACCESS_KEY: ${AWS_SECRET_ACCESS_KEY:-lakehouse-password}
+      AWS_REGION: ${AWS_REGION:-us-east-1}
+      AWS_DEFAULT_REGION: ${AWS_REGION:-us-east-1}
+      S3_ENDPOINT: ${S3_ENDPOINT:-http://host.docker.internal:9000}
+      S3_WAREHOUSE: ${S3_WAREHOUSE:-s3a://lakehouse/warehouse}
+      S3_PATH_STYLE_ACCESS: ${S3_PATH_STYLE_ACCESS:-true}
+      S3_SSL_ENABLED: ${S3_SSL_ENABLED:-false}
+      SPARK_PUBLIC_HOST: ${SPARK_PUBLIC_HOST:?Set SPARK_PUBLIC_HOST to the host IP or DNS name reachable by Spark clients/workers}
+      SPARK_CONNECT_PUBLIC_HOST: ${SPARK_CONNECT_PUBLIC_HOST:-}
+      SPARK_CONNECT_BIND_HOST: ${SPARK_CONNECT_BIND_HOST:-}
+      SPARK_MASTER_PORT: ${SPARK_MASTER_PORT:-7077}
+      HIVE_METASTORE_PUBLIC_HOST: ${HIVE_METASTORE_PUBLIC_HOST:-}
+      HIVE_METASTORE_PORT: ${HIVE_METASTORE_PORT:-9083}
+      HIVE_METASTORE_URI: ${HIVE_METASTORE_URI:-}
+      SPARK_CONNECT_PORT: ${SPARK_CONNECT_PORT:-15002}
+      SPARK_CONNECT_UI_PORT: ${SPARK_CONNECT_UI_PORT:-4050}
+      SPARK_CONNECT_DRIVER_PORT: ${SPARK_CONNECT_DRIVER_PORT:-39100}
+      SPARK_CONNECT_BLOCKMANAGER_PORT: ${SPARK_CONNECT_BLOCKMANAGER_PORT:-39101}
+      SPARK_CONNECT_DRIVER_MEMORY: ${SPARK_CONNECT_DRIVER_MEMORY:-1g}
+      SPARK_CONNECT_EXECUTOR_INSTANCES: ${SPARK_CONNECT_EXECUTOR_INSTANCES:-1}
+      SPARK_CONNECT_EXECUTOR_CORES: ${SPARK_CONNECT_EXECUTOR_CORES:-1}
+      SPARK_CONNECT_EXECUTOR_MEMORY: ${SPARK_CONNECT_EXECUTOR_MEMORY:-1g}
+      SPARK_CONNECT_EXECUTOR_MEMORY_OVERHEAD: ${SPARK_CONNECT_EXECUTOR_MEMORY_OVERHEAD:-256m}
+      SPARK_CONNECT_CORES_MAX: ${SPARK_CONNECT_CORES_MAX:-1}
+      SPARK_CONNECT_VERSION: ${SPARK_CONNECT_VERSION:-3.5.6}
+      SPARK_CONNECT_UNUSED_VERSION: ${SPARK_CONNECT_UNUSED_VERSION:-1.0.0}
+      HOME: /tmp
+      SPARK_NO_DAEMONIZE: "true"
+    volumes:
+      - lakehouse-conf:/opt/lakehouse/conf:ro
+      - ${LOCAL_JARS_DIR:-./lakehouse-jars}:/opt/lakehouse/jars:ro
+    extra_hosts:
+      - "host.docker.internal:host-gateway"
+    depends_on:
+      lakehouse-config:
+        condition: service_completed_successfully
+      spark-master:
+        condition: service_started
+      hive-metastore:
+        condition: service_started
+    command:
+      - /bin/bash
+      - -lc
+      - |
+        set -e
+        mkdir -p /opt/spark/conf /tmp/.ivy2 /tmp/spark-events
+        chmod -R 777 /tmp/.ivy2 /tmp/spark-events
+
+        wait_for_file() {
+          pattern="$1"
+          description="$2"
+          for i in $$(seq 1 120); do
+            if ls $${pattern} >/dev/null 2>&1; then
+              echo "$${description} is available: $${pattern}"
+              return 0
+            fi
+            sleep 1
+          done
+          echo "ERROR: timed out waiting for $${description}: $${pattern}" >&2
+          exit 1
+        }
+
+        wait_for_file /opt/lakehouse/conf/spark-defaults.conf spark-defaults.conf
+        wait_for_file /opt/lakehouse/conf/core-site.xml core-site.xml
+        wait_for_file /opt/lakehouse/conf/hive-site.xml hive-site.xml
+        wait_for_file "/opt/lakehouse/jars/spark/hadoop-aws-*.jar" "Spark hadoop-aws JAR"
+        wait_for_file "/opt/lakehouse/jars/spark/aws-java-sdk-bundle-*.jar" "Spark AWS SDK bundle JAR"
+        wait_for_file "/opt/lakehouse/jars/connect/org.apache.spark_spark-connect_2.12-*.jar" "Spark Connect JAR"
+        wait_for_file "/opt/lakehouse/jars/connect/org.spark-project.spark_unused-*.jar" "Spark Connect unused marker JAR"
+        wait_for_file "/opt/lakehouse/jars/ivy/hive-metastore-*.jar" "Hive Metastore client JAR"
+        wait_for_file "/opt/lakehouse/jars/ivy/hive-exec-*.jar" "Hive exec client JAR"
+
+        cp /opt/lakehouse/conf/spark-defaults.conf /opt/spark/conf/spark-defaults.conf
+        cp /opt/lakehouse/conf/core-site.xml /opt/spark/conf/core-site.xml
+        cp /opt/lakehouse/conf/hive-site.xml /opt/spark/conf/hive-site.xml
+
+        SPARK_MASTER_URL="spark://$${SPARK_PUBLIC_HOST}:$${SPARK_MASTER_PORT}"
+        SPARK_CONNECT_ADVERTISED_HOST="$${SPARK_CONNECT_PUBLIC_HOST:-$${SPARK_PUBLIC_HOST}}"
+        SPARK_CONNECT_EFFECTIVE_BIND_HOST="$${SPARK_CONNECT_BIND_HOST:-$${SPARK_CONNECT_ADVERTISED_HOST}}"
+        HIVE_METASTORE_ADVERTISED_HOST="$${HIVE_METASTORE_PUBLIC_HOST:-$${SPARK_PUBLIC_HOST}}"
+        HIVE_METASTORE_ADVERTISED_PORT="$${HIVE_METASTORE_PORT:-9083}"
+        HIVE_METASTORE_EFFECTIVE_URI="$${HIVE_METASTORE_URI:-thrift://$${HIVE_METASTORE_ADVERTISED_HOST}:$${HIVE_METASTORE_ADVERTISED_PORT}}"
+
+        echo "Waiting for Spark Master and Hive Metastore through public addresses..."
+        for endpoint in "$${SPARK_PUBLIC_HOST}:$${SPARK_MASTER_PORT}" "$${HIVE_METASTORE_ADVERTISED_HOST}:$${HIVE_METASTORE_ADVERTISED_PORT}"; do
+          host="$${endpoint%:*}"
+          p="$${endpoint#*:}"
+          for i in $$(seq 1 60); do
+            if (echo > /dev/tcp/$${host}/$${p}) >/dev/null 2>&1; then
+              echo "$${host}:$${p} is reachable."
+              break
+            fi
+            if [ "$${i}" -eq 60 ]; then
+              echo "ERROR: $${host}:$${p} is not reachable." >&2
+              exit 1
+            fi
+            sleep 2
+          done
+        done
+
+        SPARK_CONNECT_JARS="/opt/lakehouse/jars/connect/org.apache.spark_spark-connect_2.12-$${SPARK_CONNECT_VERSION}.jar,/opt/lakehouse/jars/connect/org.spark-project.spark_unused-$${SPARK_CONNECT_UNUSED_VERSION}.jar"
+
+        echo "Starting Spark Connect Server against $${SPARK_MASTER_URL}"
+        echo "Spark Connect gRPC endpoint: sc://$${SPARK_CONNECT_ADVERTISED_HOST}:$${SPARK_CONNECT_PORT}"
+        echo "Spark Connect bind host: $${SPARK_CONNECT_EFFECTIVE_BIND_HOST}"
+        echo "Spark Connect driver advertised as $${SPARK_CONNECT_ADVERTISED_HOST}:$${SPARK_CONNECT_DRIVER_PORT}"
+        echo "Spark Connect JARs: $${SPARK_CONNECT_JARS}"
+        echo "Spark Connect resource footprint: driver=$${SPARK_CONNECT_DRIVER_MEMORY}, executor_instances=$${SPARK_CONNECT_EXECUTOR_INSTANCES}, executor_cores=$${SPARK_CONNECT_EXECUTOR_CORES}, executor_memory=$${SPARK_CONNECT_EXECUTOR_MEMORY}, cores_max=$${SPARK_CONNECT_CORES_MAX}"
+
+        export SPARK_LOCAL_IP="$${SPARK_CONNECT_EFFECTIVE_BIND_HOST}"
+        export SPARK_DIST_CLASSPATH="/opt/lakehouse/jars/spark/*:/opt/lakehouse/jars/connect/*$${SPARK_DIST_CLASSPATH:+:$${SPARK_DIST_CLASSPATH}}"
+
+        exec /opt/spark/sbin/start-connect-server.sh \
+          --master "$${SPARK_MASTER_URL}" \
+          --driver-memory "$${SPARK_CONNECT_DRIVER_MEMORY}" \
+          --jars "$${SPARK_CONNECT_JARS}" \
+          --conf spark.connect.grpc.binding.port="$${SPARK_CONNECT_PORT}" \
+          --conf spark.driver.host="$${SPARK_CONNECT_ADVERTISED_HOST}" \
+          --conf spark.driver.bindAddress="$${SPARK_CONNECT_EFFECTIVE_BIND_HOST}" \
+          --conf spark.driver.port="$${SPARK_CONNECT_DRIVER_PORT}" \
+          --conf spark.blockManager.port="$${SPARK_CONNECT_BLOCKMANAGER_PORT}" \
+          --conf spark.ui.port="$${SPARK_CONNECT_UI_PORT}" \
+          --conf spark.sql.catalogImplementation=hive \
+          --conf spark.hadoop.hive.metastore.uris="$${HIVE_METASTORE_EFFECTIVE_URI}" \
+          --conf spark.executor.instances="$${SPARK_CONNECT_EXECUTOR_INSTANCES}" \
+          --conf spark.executor.cores="$${SPARK_CONNECT_EXECUTOR_CORES}" \
+          --conf spark.executor.memory="$${SPARK_CONNECT_EXECUTOR_MEMORY}" \
+          --conf spark.executor.memoryOverhead="$${SPARK_CONNECT_EXECUTOR_MEMORY_OVERHEAD}" \
+          --conf spark.cores.max="$${SPARK_CONNECT_CORES_MAX}" \
+          --conf spark.dynamicAllocation.enabled=false \
+          --conf spark.driver.extraClassPath=/opt/lakehouse/jars/spark/*:/opt/lakehouse/jars/connect/* \
+          --conf spark.executor.extraClassPath=/opt/lakehouse/jars/spark/*:/opt/lakehouse/jars/connect/* \
+          --conf spark.jars.ivy=/tmp/.ivy2 \
+          --conf spark.driver.extraJavaOptions="-Duser.home=/tmp -Divy.home=/tmp/.ivy2"
+
+volumes:
+  lakehouse-conf: {}

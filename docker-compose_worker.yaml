@@ -1,0 +1,224 @@
+name: spark-lakehouse-external-worker
+services:
+  lakehouse-worker-config:
+    image: alpine:3.20
+    container_name: lakehouse-worker-config
+    restart: 'no'
+    network_mode: host
+    cpus: ${LAKEHOUSE_CONFIG_CPUS:-0.10}
+    mem_limit: ${LAKEHOUSE_CONFIG_MEMORY:-128m}
+    environment:
+      SPARK_MASTER_HOST: ${SPARK_MASTER_HOST:-192.168.1.101}
+      SPARK_MASTER_PORT: ${SPARK_MASTER_PORT:-7077}
+      HIVE_METASTORE_HOST: ${HIVE_METASTORE_HOST:-192.168.1.101}
+      HIVE_METASTORE_PORT: ${HIVE_METASTORE_PORT:-9083}
+      S3_ENDPOINT: ${S3_ENDPOINT:?Set S3_ENDPOINT}
+      S3_WAREHOUSE: ${S3_WAREHOUSE:-s3a://lakehouse/data}
+      S3_PATH_STYLE_ACCESS: ${S3_PATH_STYLE_ACCESS:-true}
+      S3_SSL_ENABLED: ${S3_SSL_ENABLED:-true}
+      AWS_ACCESS_KEY_ID: ${AWS_ACCESS_KEY_ID:?Set AWS_ACCESS_KEY_ID}
+      AWS_SECRET_ACCESS_KEY: ${AWS_SECRET_ACCESS_KEY:?Set AWS_SECRET_ACCESS_KEY}
+      AWS_REGION: ${AWS_REGION:-us-east-1}
+    volumes:
+    - lakehouse-worker-conf:/opt/lakehouse/conf
+    command:
+    - /bin/sh
+    - -ec
+    - |
+      mkdir -p /opt/lakehouse/conf
+
+      SPARK_MASTER_URL="spark://$${SPARK_MASTER_HOST}:$${SPARK_MASTER_PORT}"
+      HIVE_METASTORE_URI="thrift://$${HIVE_METASTORE_HOST}:$${HIVE_METASTORE_PORT}"
+
+      echo "External Spark worker configuration"
+      echo "Spark master URL: $${SPARK_MASTER_URL}"
+      echo "Hive Metastore URI: $${HIVE_METASTORE_URI}"
+      echo "S3 endpoint: $${S3_ENDPOINT}"
+      echo "Warehouse: $${S3_WAREHOUSE}"
+      echo "Local JAR directory: /opt/lakehouse/jars"
+
+      cat > /opt/lakehouse/conf/core-site.xml <<EOF_CORE
+      <configuration>
+        <property>
+          <name>fs.s3a.impl</name>
+          <value>org.apache.hadoop.fs.s3a.S3AFileSystem</value>
+        </property>
+        <property>
+          <name>fs.s3a.endpoint</name>
+          <value>$${S3_ENDPOINT}</value>
+        </property>
+        <property>
+          <name>fs.s3a.path.style.access</name>
+          <value>$${S3_PATH_STYLE_ACCESS}</value>
+        </property>
+        <property>
+          <name>fs.s3a.connection.ssl.enabled</name>
+          <value>$${S3_SSL_ENABLED}</value>
+        </property>
+        <property>
+          <name>fs.s3a.access.key</name>
+          <value>$${AWS_ACCESS_KEY_ID}</value>
+        </property>
+        <property>
+          <name>fs.s3a.secret.key</name>
+          <value>$${AWS_SECRET_ACCESS_KEY}</value>
+        </property>
+        <property>
+          <name>fs.s3a.aws.credentials.provider</name>
+          <value>org.apache.hadoop.fs.s3a.SimpleAWSCredentialsProvider</value>
+        </property>
+        <property>
+          <name>fs.s3a.endpoint.region</name>
+          <value>$${AWS_REGION}</value>
+        </property>
+      </configuration>
+      EOF_CORE
+
+      cat > /opt/lakehouse/conf/hive-site.xml <<EOF_HIVE
+      <?xml version="1.0"?>
+      <?xml-stylesheet type="text/xsl" href="configuration.xsl"?>
+      <configuration>
+        <property>
+          <name>hive.metastore.uris</name>
+          <value>$${HIVE_METASTORE_URI}</value>
+        </property>
+        <property>
+          <name>hive.metastore.warehouse.dir</name>
+          <value>$${S3_WAREHOUSE}</value>
+        </property>
+      </configuration>
+      EOF_HIVE
+
+      cat > /opt/lakehouse/conf/spark-defaults.conf <<EOF_SPARK
+      spark.master                                      $${SPARK_MASTER_URL}
+      spark.sql.warehouse.dir                           $${S3_WAREHOUSE}
+      spark.sql.catalogImplementation                   hive
+      spark.hadoop.hive.metastore.uris                  $${HIVE_METASTORE_URI}
+      spark.sql.hive.metastore.version                  3.1.3
+      spark.sql.hive.metastore.jars                     path
+      spark.sql.hive.metastore.jars.path                /opt/lakehouse/jars/ivy/*
+
+      spark.driver.extraClassPath                       /opt/lakehouse/jars/spark/*
+      spark.executor.extraClassPath                     /opt/lakehouse/jars/spark/*
+
+      spark.sql.extensions                              io.delta.sql.DeltaSparkSessionExtension,org.apache.iceberg.spark.extensions.IcebergSparkSessionExtensions
+      spark.sql.catalog.spark_catalog                   org.apache.spark.sql.delta.catalog.DeltaCatalog
+      spark.sql.catalog.iceberg                         org.apache.iceberg.spark.SparkCatalog
+      spark.sql.catalog.iceberg.type                    hive
+      spark.sql.catalog.iceberg.uri                     $${HIVE_METASTORE_URI}
+      spark.sql.catalog.iceberg.warehouse               $${S3_WAREHOUSE}
+
+      spark.hadoop.fs.s3a.impl                          org.apache.hadoop.fs.s3a.S3AFileSystem
+      spark.hadoop.fs.s3a.endpoint                      $${S3_ENDPOINT}
+      spark.hadoop.fs.s3a.path.style.access             $${S3_PATH_STYLE_ACCESS}
+      spark.hadoop.fs.s3a.connection.ssl.enabled        $${S3_SSL_ENABLED}
+      spark.hadoop.fs.s3a.access.key                    $${AWS_ACCESS_KEY_ID}
+      spark.hadoop.fs.s3a.secret.key                    $${AWS_SECRET_ACCESS_KEY}
+      spark.hadoop.fs.s3a.aws.credentials.provider      org.apache.hadoop.fs.s3a.SimpleAWSCredentialsProvider
+
+      spark.pyspark.python                              python3
+      spark.pyspark.driver.python                       python3
+      spark.network.timeout                             300s
+      EOF_SPARK
+
+      ls -lh /opt/lakehouse/conf
+  spark-worker:
+    image: apache/spark:3.5.6
+    container_name: lakehouse-external-worker-192-168-1-11
+    user: root
+    restart: unless-stopped
+    network_mode: host
+    cpus: ${SPARK_WORKER_CONTAINER_CPUS:-4.00}
+    mem_limit: ${SPARK_WORKER_CONTAINER_MEMORY:-4g}
+    depends_on:
+    - lakehouse-worker-config
+    environment:
+      SPARK_MASTER_HOST: ${SPARK_MASTER_HOST:-192.168.1.101}
+      SPARK_MASTER_PORT: ${SPARK_MASTER_PORT:-7077}
+      SPARK_WORKER_PUBLIC_HOST: ${SPARK_WORKER_PUBLIC_HOST:-192.168.1.11}
+      SPARK_WORKER_PORT: ${SPARK_WORKER_PORT:-7078}
+      SPARK_WORKER_WEBUI_PORT: ${SPARK_WORKER_WEBUI_PORT:-8081}
+      SPARK_WORKER_CORES: ${SPARK_WORKER_CORES:-4}
+      SPARK_WORKER_MEMORY: ${SPARK_WORKER_MEMORY:-3g}
+      SPARK_DAEMON_MEMORY: ${SPARK_DAEMON_MEMORY:-512m}
+      SPARK_NO_DAEMONIZE: 'true'
+      HOME: /tmp
+      PYSPARK_PYTHON: python3
+      PYSPARK_DRIVER_PYTHON: python3
+    volumes:
+    - lakehouse-worker-conf:/opt/lakehouse/conf:ro
+    - ${LOCAL_JARS_DIR:-./lakehouse-jars}:/opt/lakehouse/jars:ro
+    command:
+    - /bin/bash
+    - -lc
+    - |
+      set -e
+      mkdir -p /opt/spark/conf /tmp/spark-worker
+      wait_for_file() {
+        target="$${1}"
+        label="$${2}"
+        for i in $$(seq 1 60); do
+          if [ -f "$${target}" ]; then
+            echo "$${label} is available: $${target}"
+            return 0
+          fi
+          sleep 1
+        done
+        echo "ERROR: timed out waiting for $${label}: $${target}" >&2
+        exit 1
+      }
+
+      wait_for_file /opt/lakehouse/conf/spark-defaults.conf spark-defaults.conf
+
+      echo "Waiting for local Spark local runtime JARs..."
+      for i in $$(seq 1 120); do
+        if ls /opt/lakehouse/jars/spark/hadoop-aws-*.jar >/dev/null 2>&1 && ls /opt/lakehouse/jars/spark/aws-java-sdk-bundle-*.jar >/dev/null 2>&1; then
+          echo "Spark local runtime JARs are available:"
+          ls -lh /opt/lakehouse/jars/spark
+          break
+        fi
+        if [ "$${i}" -eq 120 ]; then
+          echo "ERROR: timed out waiting for Spark local runtime JARs in /opt/lakehouse/jars/spark" >&2
+          exit 1
+        fi
+        sleep 1
+      done
+      wait_for_file /opt/lakehouse/conf/core-site.xml core-site.xml
+      wait_for_file /opt/lakehouse/conf/hive-site.xml hive-site.xml
+      cp /opt/lakehouse/conf/spark-defaults.conf /opt/spark/conf/spark-defaults.conf
+      cp /opt/lakehouse/conf/core-site.xml /opt/spark/conf/core-site.xml
+      cp /opt/lakehouse/conf/hive-site.xml /opt/spark/conf/hive-site.xml
+
+      SPARK_MASTER_URL="spark://$${SPARK_MASTER_HOST}:$${SPARK_MASTER_PORT}"
+
+      echo "External Spark Worker"
+      echo "Worker advertised host: $${SPARK_WORKER_PUBLIC_HOST}"
+      echo "Worker RPC port: $${SPARK_WORKER_PORT}"
+      echo "Worker UI port: $${SPARK_WORKER_WEBUI_PORT}"
+      echo "Worker resources: cores=$${SPARK_WORKER_CORES}, memory=$${SPARK_WORKER_MEMORY}"
+      echo "Connecting to master: $${SPARK_MASTER_URL}"
+
+      for i in $$(seq 1 60); do
+        if (echo > /dev/tcp/$${SPARK_MASTER_HOST}/$${SPARK_MASTER_PORT}) >/dev/null 2>&1; then
+          echo "Spark Master is reachable."
+          break
+        fi
+        if [ "$${i}" -eq 60 ]; then
+          echo "ERROR: Spark Master is not reachable at $${SPARK_MASTER_HOST}:$${SPARK_MASTER_PORT}." >&2
+          exit 1
+        fi
+        sleep 2
+      done
+
+      export SPARK_LOCAL_IP="$${SPARK_WORKER_PUBLIC_HOST}"
+      export SPARK_PUBLIC_DNS="$${SPARK_WORKER_PUBLIC_HOST}"
+
+      exec /opt/spark/bin/spark-class org.apache.spark.deploy.worker.Worker \
+        "$${SPARK_MASTER_URL}" \
+        --host "$${SPARK_WORKER_PUBLIC_HOST}" \
+        --port "$${SPARK_WORKER_PORT}" \
+        --cores "$${SPARK_WORKER_CORES}" \
+        --memory "$${SPARK_WORKER_MEMORY}" \
+        --webui-port "$${SPARK_WORKER_WEBUI_PORT}"
+volumes:
+  lakehouse-worker-conf: {}
