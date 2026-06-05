@@ -33,6 +33,7 @@ It also intentionally avoids downloading runtime JARs from Maven at container st
 - [Operational Notes](#operational-notes)
 - [Troubleshooting](#troubleshooting)
 - [Roadmap](#roadmap)
+- [License](#license)
 
 ---
 
@@ -145,6 +146,8 @@ Recommended layout:
 ├── hive-ivy-urls.txt
 ├── prepare_lakehouse_jars_local.sh
 ├── README.md
+├── python/
+│   └── spark_pi.py                 # sample Spark job used to validate the cluster
 └── lakehouse-jars/                 # generated, do not commit large JARs
     ├── spark/
     ├── connect/
@@ -163,6 +166,7 @@ Recommended layout:
 | `env_worker` | External worker environment template. Copy to `.env` on the worker host. |
 | `prepare_lakehouse_jars_local.sh` | Downloads all required runtime JARs into a local directory. |
 | `hive-ivy-urls.txt` | Frozen list of Hive Metastore client transitive dependencies. |
+| `python/spark_pi.py` | Small sample Spark job used to validate that Spark applications can be submitted to the cluster. |
 
 ---
 
@@ -478,7 +482,13 @@ You should see at least one registered worker.
 
 ### Submit a Small Spark Job
 
-Example using a Python file in S3:
+The repository includes a small sample Spark job at:
+
+```text
+python/spark_pi.py
+```
+
+If the local `python/` directory is mounted into the Spark container by the compose file, run it directly from the mounted path:
 
 ```bash
 docker exec -it lakehouse-spark-master /opt/spark/bin/spark-submit \
@@ -495,7 +505,30 @@ docker exec -it lakehouse-spark-master /opt/spark/bin/spark-submit \
   --conf spark.driver.bindAddress=<SPARK_PUBLIC_HOST> \
   --conf spark.driver.port=39010 \
   --conf spark.blockManager.port=39011 \
-  s3a://lakehouse/python/spark_pi.py \
+  /opt/lakehouse/python/spark_pi.py \
+  4 25000
+```
+
+If the directory is not mounted, copy the file into the container first:
+
+```bash
+docker cp python/spark_pi.py lakehouse-spark-master:/tmp/spark_pi.py
+
+docker exec -it lakehouse-spark-master /opt/spark/bin/spark-submit \
+  --master spark://<SPARK_PUBLIC_HOST>:7077 \
+  --deploy-mode client \
+  --conf spark.app.name="Spark Pi test" \
+  --conf spark.executor.instances=2 \
+  --conf spark.executor.cores=1 \
+  --conf spark.executor.memory=512m \
+  --conf spark.executor.memoryOverhead=256m \
+  --conf spark.cores.max=2 \
+  --conf spark.driver.memory=512m \
+  --conf spark.driver.host=<SPARK_PUBLIC_HOST> \
+  --conf spark.driver.bindAddress=<SPARK_PUBLIC_HOST> \
+  --conf spark.driver.port=39010 \
+  --conf spark.blockManager.port=39011 \
+  /tmp/spark_pi.py \
   4 25000
 ```
 
@@ -764,7 +797,15 @@ Potential next steps:
 
 ## License
 
-Add your preferred license here.
+This project is licensed under the **GNU General Public License v2.0**.
+
+Use the SPDX identifier:
+
+```text
+GPL-2.0-only
+```
+
+See the `LICENSE` file for the complete license text.
 
 ---
 
