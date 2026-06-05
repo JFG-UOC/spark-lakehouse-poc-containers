@@ -78,4 +78,5 @@ docker-compose.override.yaml
 !hive-ivy-urls.txt
 
 # Project Python workspace
+!python/spark_pi.py
 python/
