@@ -918,13 +918,13 @@ services:
       - ${LOCAL_JARS_DIR:-./lakehouse-jars}:/opt/lakehouse/jars:ro
     extra_hosts:
       - "host.docker.internal:host-gateway"
+    # Podman Compose does not reliably support depends_on conditions.
+    # Keep simple startup ordering here and let the command-level wait loops
+    # validate files and TCP reachability before starting Spark Connect.
     depends_on:
-      lakehouse-config:
-        condition: service_completed_successfully
-      spark-master:
-        condition: service_started
-      hive-metastore:
-        condition: service_started
+      - lakehouse-config
+      - spark-master
+      - hive-metastore
     command:
       - /bin/bash
       - -lc

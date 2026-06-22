@@ -38,7 +38,7 @@ services:
       JAVA_PROXY_OPTIONS="-Dhttp.nonProxyHosts=$${JAVA_NON_PROXY_HOSTS} -Dhttps.nonProxyHosts=$${JAVA_NON_PROXY_HOSTS}"
       echo "Java non-proxy hosts: $${JAVA_NON_PROXY_HOSTS}"
 
-      echo "External Spark worker configuration"
+      echo "Spark worker configuration"
       echo "Spark master URL: $${SPARK_MASTER_URL}"
       echo "Hive Metastore URI: $${HIVE_METASTORE_URI}"
       echo "S3 endpoint: $${S3_ENDPOINT}"
@@ -159,7 +159,7 @@ services:
       no_proxy: ${no_proxy:-}
       SPARK_MASTER_HOST: ${SPARK_MASTER_HOST:-192.168.1.101}
       SPARK_MASTER_PORT: ${SPARK_MASTER_PORT:-7077}
-      SPARK_WORKER_PUBLIC_HOST: ${SPARK_WORKER_PUBLIC_HOST:-192.168.1.11}
+      SPARK_WORKER_PUBLIC_HOST: ${SPARK_WORKER_PUBLIC_HOST:?Set SPARK_WORKER_PUBLIC_HOST to the host IP or DNS name reachable by Spark master and clients}
       SPARK_WORKER_PORT: ${SPARK_WORKER_PORT:-7078}
       SPARK_WORKER_WEBUI_PORT: ${SPARK_WORKER_WEBUI_PORT:-8081}
       SPARK_WORKER_CORES: ${SPARK_WORKER_CORES:-4}
@@ -215,7 +215,7 @@ services:
 
       SPARK_MASTER_URL="spark://$${SPARK_MASTER_HOST}:$${SPARK_MASTER_PORT}"
 
-      echo "External Spark Worker"
+      echo "Spark Worker"
       echo "Worker advertised host: $${SPARK_WORKER_PUBLIC_HOST}"
       echo "Worker RPC port: $${SPARK_WORKER_PORT}"
       echo "Worker UI port: $${SPARK_WORKER_WEBUI_PORT}"
