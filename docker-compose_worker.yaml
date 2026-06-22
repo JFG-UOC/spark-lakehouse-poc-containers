@@ -1,4 +1,4 @@
-name: spark-lakehouse-external-worker
+name: spark-lakehouse-worker
 services:
   lakehouse-worker-config:
     image: alpine:3.20
@@ -33,6 +33,11 @@ services:
       SPARK_MASTER_URL="spark://$${SPARK_MASTER_HOST}:$${SPARK_MASTER_PORT}"
       HIVE_METASTORE_URI="thrift://$${HIVE_METASTORE_HOST}:$${HIVE_METASTORE_PORT}"
 
+      JAVA_NON_PROXY_HOSTS="$${no_proxy:-localhost,127.0.0.1}"
+      JAVA_NON_PROXY_HOSTS="$$(printf '%s' "$${JAVA_NON_PROXY_HOSTS}" | sed 's/[[:space:]]//g; s/,/|/g; s/^\./*./; s/|\./|*./g')"
+      JAVA_PROXY_OPTIONS="-Dhttp.nonProxyHosts=$${JAVA_NON_PROXY_HOSTS} -Dhttps.nonProxyHosts=$${JAVA_NON_PROXY_HOSTS}"
+      echo "Java non-proxy hosts: $${JAVA_NON_PROXY_HOSTS}"
+
       echo "External Spark worker configuration"
       echo "Spark master URL: $${SPARK_MASTER_URL}"
       echo "Hive Metastore URI: $${HIVE_METASTORE_URI}"
@@ -50,6 +55,8 @@ services:
           <name>fs.s3a.endpoint</name>
           <value>$${S3_ENDPOINT}</value>
         </property>
+        <!-- Keep the S3A endpoint direct. Proxy values are passed as environment variables,
+             while Java proxy bypass is generated in spark-defaults.conf from no_proxy. -->
         <property>
           <name>fs.s3a.path.style.access</name>
           <value>$${S3_PATH_STYLE_ACCESS}</value>
@@ -89,6 +96,8 @@ services:
           <name>hive.metastore.warehouse.dir</name>
           <value>$${S3_WAREHOUSE}</value>
         </property>
+        <!-- Proxy handling is applied through Spark JVM options and environment variables.
+             S3A proxy properties are intentionally not set here so S3_ENDPOINT can bypass the proxy via no_proxy/nonProxyHosts. -->
       </configuration>
       EOF_HIVE
 
@@ -103,6 +112,14 @@ services:
 
       spark.driver.extraClassPath                       /opt/lakehouse/jars/spark/*
       spark.executor.extraClassPath                     /opt/lakehouse/jars/spark/*
+      spark.driverEnv.HTTP_PROXY                        $${HTTP_PROXY}
+      spark.driverEnv.HTTPS_PROXY                       $${HTTPS_PROXY}
+      spark.driverEnv.no_proxy                          $${no_proxy}
+      spark.executorEnv.HTTP_PROXY                      $${HTTP_PROXY}
+      spark.executorEnv.HTTPS_PROXY                     $${HTTPS_PROXY}
+      spark.executorEnv.no_proxy                        $${no_proxy}
+      spark.driver.extraJavaOptions                     $${JAVA_PROXY_OPTIONS}
+      spark.executor.extraJavaOptions                   $${JAVA_PROXY_OPTIONS}
 
       spark.sql.extensions                              io.delta.sql.DeltaSparkSessionExtension,org.apache.iceberg.spark.extensions.IcebergSparkSessionExtensions
       spark.sql.catalog.spark_catalog                   org.apache.spark.sql.delta.catalog.DeltaCatalog
@@ -118,6 +135,7 @@ services:
       spark.hadoop.fs.s3a.access.key                    $${AWS_ACCESS_KEY_ID}
       spark.hadoop.fs.s3a.secret.key                    $${AWS_SECRET_ACCESS_KEY}
       spark.hadoop.fs.s3a.aws.credentials.provider      org.apache.hadoop.fs.s3a.SimpleAWSCredentialsProvider
+      spark.hadoop.fs.s3a.endpoint.region              $${AWS_REGION}
 
       spark.pyspark.python                              python3
       spark.pyspark.driver.python                       python3
@@ -127,7 +145,7 @@ services:
       ls -lh /opt/lakehouse/conf
   spark-worker:
     image: apache/spark:3.5.6
-    container_name: lakehouse-external-worker-192-168-1-11
+    container_name: lakehouse-spark-worker
     user: root
     restart: unless-stopped
     network_mode: host

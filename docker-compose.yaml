@@ -136,6 +136,11 @@ services:
       SPARK_DRIVER_EFFECTIVE_BIND_ADDRESS="$${SPARK_DRIVER_BIND_ADDRESS:-$${SPARK_PUBLIC_HOST}}"
       SPARK_MASTER_URL="spark://$${SPARK_PUBLIC_HOST}:$${SPARK_MASTER_PORT}"
 
+      JAVA_NON_PROXY_HOSTS="$${no_proxy:-localhost,127.0.0.1}"
+      JAVA_NON_PROXY_HOSTS="$$(printf '%s' "$${JAVA_NON_PROXY_HOSTS}" | sed 's/[[:space:]]//g; s/,/|/g; s/^\./*./; s/|\./|*./g')"
+      JAVA_PROXY_OPTIONS="-Dhttp.nonProxyHosts=$${JAVA_NON_PROXY_HOSTS} -Dhttps.nonProxyHosts=$${JAVA_NON_PROXY_HOSTS}"
+      echo "Java non-proxy hosts: $${JAVA_NON_PROXY_HOSTS}"
+
       echo "Spark public host: $${SPARK_PUBLIC_HOST}"
       echo "Spark master URL: $${SPARK_MASTER_URL}"
       echo "Spark master bind host: $${SPARK_MASTER_EFFECTIVE_BIND_HOST}"
@@ -183,6 +188,8 @@ services:
           <name>hive.metastore.warehouse.dir</name>
           <value>$${S3_WAREHOUSE}</value>
         </property>
+        <!-- Proxy handling is applied through Spark JVM options and environment variables.
+             S3A proxy properties are intentionally not set here so S3_ENDPOINT can bypass the proxy via no_proxy/nonProxyHosts. -->
         <property>
           <name>fs.s3a.impl</name>
           <value>org.apache.hadoop.fs.s3a.S3AFileSystem</value>
@@ -191,6 +198,8 @@ services:
           <name>fs.s3a.endpoint</name>
           <value>$${S3_ENDPOINT}</value>
         </property>
+        <!-- Keep the S3A endpoint direct. Proxy values are passed as environment variables,
+             while Java proxy bypass is generated in spark-defaults.conf from no_proxy. -->
         <property>
           <name>fs.s3a.path.style.access</name>
           <value>$${S3_PATH_STYLE_ACCESS}</value>
@@ -224,6 +233,8 @@ services:
           <name>fs.s3a.endpoint</name>
           <value>$${S3_ENDPOINT}</value>
         </property>
+        <!-- Keep the S3A endpoint direct. Proxy values are passed as environment variables,
+             while Java proxy bypass is generated in spark-defaults.conf from no_proxy. -->
         <property>
           <name>fs.s3a.path.style.access</name>
           <value>$${S3_PATH_STYLE_ACCESS}</value>
@@ -243,6 +254,10 @@ services:
         <property>
           <name>fs.s3a.secret.key</name>
           <value>$${AWS_SECRET_ACCESS_KEY}</value>
+        </property>
+        <property>
+          <name>fs.s3a.endpoint.region</name>
+          <value>$${AWS_REGION}</value>
         </property>
         <property>
           <name>fs.s3a.attempts.maximum</name>
@@ -266,6 +281,15 @@ services:
       spark.driver.extraClassPath                      /opt/lakehouse/jars/spark/*
       spark.executor.extraClassPath                    /opt/lakehouse/jars/spark/*
 
+      spark.driverEnv.HTTP_PROXY                     $${HTTP_PROXY}
+      spark.driverEnv.HTTPS_PROXY                    $${HTTPS_PROXY}
+      spark.driverEnv.no_proxy                       $${no_proxy}
+      spark.executorEnv.HTTP_PROXY                   $${HTTP_PROXY}
+      spark.executorEnv.HTTPS_PROXY                  $${HTTPS_PROXY}
+      spark.executorEnv.no_proxy                     $${no_proxy}
+      spark.driver.extraJavaOptions                  $${JAVA_PROXY_OPTIONS}
+      spark.executor.extraJavaOptions                $${JAVA_PROXY_OPTIONS}
+
       spark.sql.extensions                             io.delta.sql.DeltaSparkSessionExtension,org.apache.iceberg.spark.extensions.IcebergSparkSessionExtensions
       spark.sql.catalog.spark_catalog                  org.apache.spark.sql.delta.catalog.DeltaCatalog
 
@@ -281,6 +305,7 @@ services:
       spark.hadoop.fs.s3a.aws.credentials.provider     org.apache.hadoop.fs.s3a.SimpleAWSCredentialsProvider
       spark.hadoop.fs.s3a.access.key                   $${AWS_ACCESS_KEY_ID}
       spark.hadoop.fs.s3a.secret.key                   $${AWS_SECRET_ACCESS_KEY}
+      spark.hadoop.fs.s3a.endpoint.region              $${AWS_REGION}
 
       spark.eventLog.enabled                           false
       EOF_SPARK
@@ -820,6 +845,10 @@ services:
       HIVE_METASTORE_ADVERTISED_PORT="$${HIVE_METASTORE_PORT:-9083}"
       HIVE_METASTORE_EFFECTIVE_URI="$${HIVE_METASTORE_URI:-thrift://$${HIVE_METASTORE_ADVERTISED_HOST}:$${HIVE_METASTORE_ADVERTISED_PORT}}"
 
+      JAVA_NON_PROXY_HOSTS="$${no_proxy:-localhost,127.0.0.1}"
+      JAVA_NON_PROXY_HOSTS="$$(printf '%s' "$${JAVA_NON_PROXY_HOSTS}" | sed 's/[[:space:]]//g; s/,/|/g; s/^\./*./; s/|\./|*./g')"
+      JAVA_PROXY_OPTIONS="-Dhttp.nonProxyHosts=$${JAVA_NON_PROXY_HOSTS} -Dhttps.nonProxyHosts=$${JAVA_NON_PROXY_HOSTS}"
+
       echo "Waiting for Spark Master and Hive Metastore through public addresses..."
       for endpoint in "$${SPARK_PUBLIC_HOST}:$${SPARK_MASTER_PORT}" "$${HIVE_METASTORE_ADVERTISED_HOST}:$${HIVE_METASTORE_ADVERTISED_PORT}"; do
         host="$${endpoint%:*}"
@@ -842,7 +871,7 @@ services:
       echo "Thrift driver advertised as $${SPARK_THRIFT_ADVERTISED_HOST}:$${SPARK_THRIFT_DRIVER_PORT}"
       echo "Thrift resource footprint: driver=$${SPARK_THRIFT_DRIVER_MEMORY}, executor_instances=$${SPARK_THRIFT_EXECUTOR_INSTANCES}, executor_cores=$${SPARK_THRIFT_EXECUTOR_CORES}, executor_memory=$${SPARK_THRIFT_EXECUTOR_MEMORY}, cores_max=$${SPARK_THRIFT_CORES_MAX}"
       export SPARK_LOCAL_IP="$${SPARK_THRIFT_EFFECTIVE_BIND_HOST}"
-      exec /opt/spark/sbin/start-thriftserver.sh --master "$${SPARK_MASTER_URL}" --driver-memory "$${SPARK_THRIFT_DRIVER_MEMORY}" --hiveconf hive.metastore.uris="$${HIVE_METASTORE_EFFECTIVE_URI}" --hiveconf hive.server2.thrift.bind.host="$${SPARK_THRIFT_EFFECTIVE_BIND_HOST}" --hiveconf hive.server2.thrift.port="$${SPARK_THRIFT_PORT}" --conf spark.driver.host="$${SPARK_THRIFT_ADVERTISED_HOST}" --conf spark.driver.bindAddress="$${SPARK_THRIFT_EFFECTIVE_BIND_HOST}" --conf spark.driver.port="$${SPARK_THRIFT_DRIVER_PORT}" --conf spark.blockManager.port="$${SPARK_THRIFT_BLOCKMANAGER_PORT}" --conf spark.ui.port="$${SPARK_THRIFT_UI_PORT}" --conf spark.executor.instances="$${SPARK_THRIFT_EXECUTOR_INSTANCES}" --conf spark.executor.cores="$${SPARK_THRIFT_EXECUTOR_CORES}" --conf spark.executor.memory="$${SPARK_THRIFT_EXECUTOR_MEMORY}" --conf spark.executor.memoryOverhead="$${SPARK_THRIFT_EXECUTOR_MEMORY_OVERHEAD}" --conf spark.cores.max="$${SPARK_THRIFT_CORES_MAX}" --conf spark.dynamicAllocation.enabled=false --conf spark.jars.ivy=/tmp/.ivy2 --conf spark.driver.extraJavaOptions="-Duser.home=/tmp -Divy.home=/tmp/.ivy2"
+      exec /opt/spark/sbin/start-thriftserver.sh --master "$${SPARK_MASTER_URL}" --driver-memory "$${SPARK_THRIFT_DRIVER_MEMORY}" --hiveconf hive.metastore.uris="$${HIVE_METASTORE_EFFECTIVE_URI}" --hiveconf hive.server2.thrift.bind.host="$${SPARK_THRIFT_EFFECTIVE_BIND_HOST}" --hiveconf hive.server2.thrift.port="$${SPARK_THRIFT_PORT}" --conf spark.driver.host="$${SPARK_THRIFT_ADVERTISED_HOST}" --conf spark.driver.bindAddress="$${SPARK_THRIFT_EFFECTIVE_BIND_HOST}" --conf spark.driver.port="$${SPARK_THRIFT_DRIVER_PORT}" --conf spark.blockManager.port="$${SPARK_THRIFT_BLOCKMANAGER_PORT}" --conf spark.ui.port="$${SPARK_THRIFT_UI_PORT}" --conf spark.executor.instances="$${SPARK_THRIFT_EXECUTOR_INSTANCES}" --conf spark.executor.cores="$${SPARK_THRIFT_EXECUTOR_CORES}" --conf spark.executor.memory="$${SPARK_THRIFT_EXECUTOR_MEMORY}" --conf spark.executor.memoryOverhead="$${SPARK_THRIFT_EXECUTOR_MEMORY_OVERHEAD}" --conf spark.cores.max="$${SPARK_THRIFT_CORES_MAX}" --conf spark.dynamicAllocation.enabled=false --conf spark.jars.ivy=/tmp/.ivy2 --conf spark.driver.extraJavaOptions="-Duser.home=/tmp -Divy.home=/tmp/.ivy2 $${JAVA_PROXY_OPTIONS}" --conf spark.executor.extraJavaOptions="$${JAVA_PROXY_OPTIONS}"
   spark-connect:
     image: apache/spark:3.5.6
     container_name: lakehouse-spark-connect
@@ -939,6 +968,10 @@ services:
         HIVE_METASTORE_ADVERTISED_PORT="$${HIVE_METASTORE_PORT:-9083}"
         HIVE_METASTORE_EFFECTIVE_URI="$${HIVE_METASTORE_URI:-thrift://$${HIVE_METASTORE_ADVERTISED_HOST}:$${HIVE_METASTORE_ADVERTISED_PORT}}"
 
+        JAVA_NON_PROXY_HOSTS="$${no_proxy:-localhost,127.0.0.1}"
+        JAVA_NON_PROXY_HOSTS="$$(printf '%s' "$${JAVA_NON_PROXY_HOSTS}" | sed 's/[[:space:]]//g; s/,/|/g; s/^\./*./; s/|\./|*./g')"
+        JAVA_PROXY_OPTIONS="-Dhttp.nonProxyHosts=$${JAVA_NON_PROXY_HOSTS} -Dhttps.nonProxyHosts=$${JAVA_NON_PROXY_HOSTS}"
+
         echo "Waiting for Spark Master and Hive Metastore through public addresses..."
         for endpoint in "$${SPARK_PUBLIC_HOST}:$${SPARK_MASTER_PORT}" "$${HIVE_METASTORE_ADVERTISED_HOST}:$${HIVE_METASTORE_ADVERTISED_PORT}"; do
           host="$${endpoint%:*}"
@@ -989,7 +1022,7 @@ services:
           --conf spark.driver.extraClassPath=/opt/lakehouse/jars/spark/*:/opt/lakehouse/jars/connect/* \
           --conf spark.executor.extraClassPath=/opt/lakehouse/jars/spark/*:/opt/lakehouse/jars/connect/* \
           --conf spark.jars.ivy=/tmp/.ivy2 \
-          --conf spark.driver.extraJavaOptions="-Duser.home=/tmp -Divy.home=/tmp/.ivy2"
+          --conf spark.driver.extraJavaOptions="-Duser.home=/tmp -Divy.home=/tmp/.ivy2 $${JAVA_PROXY_OPTIONS}" --conf spark.executor.extraJavaOptions="$${JAVA_PROXY_OPTIONS}"
 
 volumes:
   lakehouse-conf: {}
