@@ -1,5 +1,8 @@
 name: spark-lakehouse-poc
 x-s3-env:
+  HTTP_PROXY: ${HTTP_PROXY:-}
+  HTTPS_PROXY: ${HTTPS_PROXY:-}
+  no_proxy: ${no_proxy:-}
   AWS_ACCESS_KEY_ID: ${AWS_ACCESS_KEY_ID:-lakehouse-user}
   AWS_SECRET_ACCESS_KEY: ${AWS_SECRET_ACCESS_KEY:-lakehouse-password}
   AWS_REGION: ${AWS_REGION:-us-east-1}
@@ -36,6 +39,9 @@ x-spark-public-env:
   HIVE_METASTORE_PORT: ${HIVE_METASTORE_PORT:-9083}
   HIVE_METASTORE_URI: ${HIVE_METASTORE_URI:-}
 x-common-env:
+  HTTP_PROXY: ${HTTP_PROXY:-}
+  HTTPS_PROXY: ${HTTPS_PROXY:-}
+  no_proxy: ${no_proxy:-}
   AWS_ACCESS_KEY_ID: ${AWS_ACCESS_KEY_ID:-lakehouse-user}
   AWS_SECRET_ACCESS_KEY: ${AWS_SECRET_ACCESS_KEY:-lakehouse-password}
   AWS_REGION: ${AWS_REGION:-us-east-1}
@@ -78,6 +84,9 @@ services:
     mem_limit: ${LAKEHOUSE_CONFIG_MEMORY:-256m}
     network_mode: host
     environment:
+      HTTP_PROXY: ${HTTP_PROXY:-}
+      HTTPS_PROXY: ${HTTPS_PROXY:-}
+      no_proxy: ${no_proxy:-}
       AWS_ACCESS_KEY_ID: ${AWS_ACCESS_KEY_ID:-lakehouse-user}
       AWS_SECRET_ACCESS_KEY: ${AWS_SECRET_ACCESS_KEY:-lakehouse-password}
       AWS_REGION: ${AWS_REGION:-us-east-1}
@@ -290,6 +299,9 @@ services:
     mem_limit: ${HIVE_METASTORE_INIT_MEMORY:-1g}
     network_mode: host
     environment:
+      HTTP_PROXY: ${HTTP_PROXY:-}
+      HTTPS_PROXY: ${HTTPS_PROXY:-}
+      no_proxy: ${no_proxy:-}
       AWS_ACCESS_KEY_ID: ${AWS_ACCESS_KEY_ID:-lakehouse-user}
       AWS_SECRET_ACCESS_KEY: ${AWS_SECRET_ACCESS_KEY:-lakehouse-password}
       AWS_REGION: ${AWS_REGION:-us-east-1}
@@ -408,6 +420,9 @@ services:
     mem_limit: ${HIVE_METASTORE_MEMORY:-2g}
     network_mode: host
     environment:
+      HTTP_PROXY: ${HTTP_PROXY:-}
+      HTTPS_PROXY: ${HTTPS_PROXY:-}
+      no_proxy: ${no_proxy:-}
       AWS_ACCESS_KEY_ID: ${AWS_ACCESS_KEY_ID:-lakehouse-user}
       AWS_SECRET_ACCESS_KEY: ${AWS_SECRET_ACCESS_KEY:-lakehouse-password}
       AWS_REGION: ${AWS_REGION:-us-east-1}
@@ -496,6 +511,9 @@ services:
     user: root
     restart: unless-stopped
     environment:
+      HTTP_PROXY: ${HTTP_PROXY:-}
+      HTTPS_PROXY: ${HTTPS_PROXY:-}
+      no_proxy: ${no_proxy:-}
       SPARK_PUBLIC_HOST: ${SPARK_PUBLIC_HOST:?Set SPARK_PUBLIC_HOST to the host IP or DNS name reachable by Spark clients/workers}
       SPARK_MASTER_BIND_HOST: ${SPARK_MASTER_BIND_HOST:-}
       SPARK_WORKER_BIND_HOST: ${SPARK_WORKER_BIND_HOST:-}
@@ -586,6 +604,9 @@ services:
     user: root
     restart: unless-stopped
     environment:
+      HTTP_PROXY: ${HTTP_PROXY:-}
+      HTTPS_PROXY: ${HTTPS_PROXY:-}
+      no_proxy: ${no_proxy:-}
       SPARK_PUBLIC_HOST: ${SPARK_PUBLIC_HOST:?Set SPARK_PUBLIC_HOST to the host IP or DNS name reachable by Spark clients/workers}
       SPARK_MASTER_BIND_HOST: ${SPARK_MASTER_BIND_HOST:-}
       SPARK_WORKER_BIND_HOST: ${SPARK_WORKER_BIND_HOST:-}
@@ -687,6 +708,9 @@ services:
     user: root
     restart: unless-stopped
     environment:
+      HTTP_PROXY: ${HTTP_PROXY:-}
+      HTTPS_PROXY: ${HTTPS_PROXY:-}
+      no_proxy: ${no_proxy:-}
       SPARK_PUBLIC_HOST: ${SPARK_PUBLIC_HOST:?Set SPARK_PUBLIC_HOST to the host IP or DNS name reachable by Spark clients/workers}
       SPARK_MASTER_BIND_HOST: ${SPARK_MASTER_BIND_HOST:-}
       SPARK_WORKER_BIND_HOST: ${SPARK_WORKER_BIND_HOST:-}
@@ -828,6 +852,9 @@ services:
     cpus: ${SPARK_CONNECT_CPUS:-2.00}
     mem_limit: ${SPARK_CONNECT_MEMORY:-4g}
     environment:
+      HTTP_PROXY: ${HTTP_PROXY:-}
+      HTTPS_PROXY: ${HTTPS_PROXY:-}
+      no_proxy: ${no_proxy:-}
       AWS_ACCESS_KEY_ID: ${AWS_ACCESS_KEY_ID:-lakehouse-user}
       AWS_SECRET_ACCESS_KEY: ${AWS_SECRET_ACCESS_KEY:-lakehouse-password}
       AWS_REGION: ${AWS_REGION:-us-east-1}

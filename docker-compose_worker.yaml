@@ -8,6 +8,9 @@ services:
     cpus: ${LAKEHOUSE_CONFIG_CPUS:-0.10}
     mem_limit: ${LAKEHOUSE_CONFIG_MEMORY:-128m}
     environment:
+      HTTP_PROXY: ${HTTP_PROXY:-}
+      HTTPS_PROXY: ${HTTPS_PROXY:-}
+      no_proxy: ${no_proxy:-}
       SPARK_MASTER_HOST: ${SPARK_MASTER_HOST:-192.168.1.101}
       SPARK_MASTER_PORT: ${SPARK_MASTER_PORT:-7077}
       HIVE_METASTORE_HOST: ${HIVE_METASTORE_HOST:-192.168.1.101}
@@ -133,6 +136,9 @@ services:
     depends_on:
     - lakehouse-worker-config
     environment:
+      HTTP_PROXY: ${HTTP_PROXY:-}
+      HTTPS_PROXY: ${HTTPS_PROXY:-}
+      no_proxy: ${no_proxy:-}
       SPARK_MASTER_HOST: ${SPARK_MASTER_HOST:-192.168.1.101}
       SPARK_MASTER_PORT: ${SPARK_MASTER_PORT:-7077}
       SPARK_WORKER_PUBLIC_HOST: ${SPARK_WORKER_PUBLIC_HOST:-192.168.1.11}
